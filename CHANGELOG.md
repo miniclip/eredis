@@ -1,5 +1,13 @@
 # CHANGELOG
 
+## v1.0.9
+
+* Don't block forever on tcp send
+* Fix q() parameters in comment about usage.
+* Fixed syntax error in docstring.
+* Add 'PRE17' makefile variable for proper compilation with OTP >= 17.0
+* Add new OTP releases in Travis-CI config
+
 ## v1.0.8
 
 * Fixed include directive to work with rebar 2.5.1. Thanks to Feng Hao
