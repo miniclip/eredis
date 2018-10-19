@@ -8,10 +8,17 @@
 
 -module(eredis).
 -include("eredis.hrl").
+-include("eredis_defaults.hrl").
 
-%% Default timeout for calls to the client gen_server
-%% Specified in http://www.erlang.org/doc/man/gen_server.html#call-3
--define(TIMEOUT, 5000).
+-define(is_host(Host),
+        (is_list((Host)) orelse % regular hostname
+         (tuple_size((Host)) =:= 2 andalso element(1, (Host)) =:= local))). % UNIX socket
+
+-define(is_database(Database),
+        (is_integer((Database)) orelse (Database) =:= undefined)).
+
+-define(is_reconnect_sleep(ReconnectSleep),
+        (is_integer((ReconnectSleep)) orelse (ReconnectSleep) =:= no_reconnect)).
 
 -export([start_link/0, start_link/1, start_link/2, start_link/3, start_link/4,
          start_link/5, start_link/6, stop/1, q/2, q/3, qp/2, qp/3, q_noreply/2,
@@ -32,42 +39,83 @@
 %%
 
 start_link() ->
-    start_link("127.0.0.1", 6379, 0, "").
+    start_link([]).
 
+start_link(Transport, Host)
+  when is_atom(Transport) ->
+    start_link(
+      [{transport, Transport}, {host, Host}]
+     );
 start_link(Host, Port) ->
-    start_link(Host, Port, 0, "").
+    start_link(
+      [{host, Host}, {port, Port}]
+     ).
 
+start_link(Transport, Host, Port)
+  when is_atom(Transport) ->
+    start_link(
+      [{transport, Transport}, {host, Host}, {port, Port}]
+     );
 start_link(Host, Port, Database) ->
-    start_link(Host, Port, Database, "").
+    start_link(
+      [{host, Host}, {port, Port}, {database, Database}]
+     ).
 
+start_link(Transport, Host, Port, Database)
+  when is_atom(Transport) ->
+    start_link(
+      [{transport, Transport}, {host, Host}, {port, Port},
+       {database, Database}]
+     );
 start_link(Host, Port, Database, Password) ->
-    start_link(Host, Port, Database, Password, 100).
+    start_link(
+      [{host, Host}, {port, Port}, {database, Database},
+       {password, Password}]
+     ).
 
+start_link(Transport, Host, Port, Database, Password)
+  when is_atom(Transport) ->
+    start_link(
+      [{transport, Transport}, {host, Host}, {port, Port},
+       {database, Database}, {password, Password}]
+     );
 start_link(Host, Port, Database, Password, ReconnectSleep) ->
-    start_link(Host, Port, Database, Password, ReconnectSleep, ?TIMEOUT).
+    start_link(
+      [{host, Host}, {port, Port}, {database, Database},
+       {password, Password}, {reconnect_sleep, ReconnectSleep}]
+     ).
 
-start_link(Host, Port, Database, Password, ReconnectSleep, ConnectTimeout)
-  when is_list(Host) orelse
-            (is_tuple(Host) andalso tuple_size(Host) =:= 2 andalso element(1, Host) =:= local),
-       is_integer(Port),
-       is_integer(Database) orelse Database == undefined,
-       is_list(Password),
-       is_integer(ReconnectSleep) orelse ReconnectSleep =:= no_reconnect,
-       is_integer(ConnectTimeout) ->
+start_link(Transport, Host, Port, Database, Password, ReconnectSleep)
+  when is_atom(Transport) ->
+    start_link(
+      [{transport, Transport}, {host, Host}, {port, Port},
+       {database, Database}, {password, Password},
+       {reconnect_sleep, ReconnectSleep}]
+     );
+start_link(Host, Port, Database, Password, ReconnectSleep, ConnectTimeout) ->
+    start_link(
+      [{host, Host}, {port, Port}, {database, Database},
+       {password, Password}, {reconnect_sleep, ReconnectSleep},
+       {connect_timeout, ConnectTimeout}]
+     ).
 
-    eredis_client:start_link(Host, Port, Database, Password,
+start_link(Transport, Host, Port, Database, Password, ReconnectSleep, ConnectTimeout)
+  when is_atom(Transport), ?is_host(Host), is_integer(Port), ?is_database(Database),
+       is_list(Password), ?is_database(Database), is_integer(ConnectTimeout) ->
+    eredis_client:start_link(Transport, Host, Port, Database, Password,
                              ReconnectSleep, ConnectTimeout).
 
 %% @doc: Callback for starting from poolboy
 -spec start_link(server_args()) -> {ok, Pid::pid()} | {error, Reason::term()}.
 start_link(Args) ->
-    Host           = proplists:get_value(host, Args, "127.0.0.1"),
-    Port           = proplists:get_value(port, Args, 6379),
-    Database       = proplists:get_value(database, Args, 0),
-    Password       = proplists:get_value(password, Args, ""),
-    ReconnectSleep = proplists:get_value(reconnect_sleep, Args, 100),
-    ConnectTimeout = proplists:get_value(connect_timeout, Args, ?TIMEOUT),
-    start_link(Host, Port, Database, Password, ReconnectSleep, ConnectTimeout).
+    Transport      = proplists:get_value(transport, Args, ?DEFAULT_TRANSPORT),
+    Host           = proplists:get_value(host, Args, ?DEFAULT_HOST),
+    Port           = proplists:get_value(port, Args, ?DEFAULT_PORT(Transport)),
+    Database       = proplists:get_value(database, Args, ?DEFAULT_DATABASE),
+    Password       = proplists:get_value(password, Args, ?DEFAULT_PASSWORD),
+    ReconnectSleep = proplists:get_value(reconnect_sleep, Args, ?DEFAULT_RECONNECT_SLEEP),
+    ConnectTimeout = proplists:get_value(connect_timeout, Args, ?DEFAULT_CONNECT_TIMEOUT),
+    start_link(Transport, Host, Port, Database, Password, ReconnectSleep, ConnectTimeout).
 
 stop(Client) ->
     eredis_client:stop(Client).

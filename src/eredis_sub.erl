@@ -3,13 +3,10 @@
 %%
 -module(eredis_sub).
 -include("eredis.hrl").
+-include("eredis_defaults.hrl").
 
-%% Default timeout for calls to the client gen_server
-%% Specified in http://www.erlang.org/doc/man/gen_server.html#call-3
--define(TIMEOUT, 5000).
-
--export([start_link/0, start_link/1, start_link/3, start_link/6, stop/1,
-         controlling_process/1, controlling_process/2, controlling_process/3,
+-export([start_link/0, start_link/1, start_link/3, start_link/4, start_link/6, start_link/7,
+         stop/1, controlling_process/1, controlling_process/2, controlling_process/3,
          ack_message/1, subscribe/2, unsubscribe/2, channels/1]).
 
 -export([psubscribe/2,punsubscribe/2]).
@@ -17,6 +14,9 @@
 -export([receiver/1, sub_example/0, pub_example/0]).
 
 -export([psub_example/0,ppub_example/0]).
+
+-define(DEFAULT_MAX_QUEUE_SIZE, infinity).
+-define(DEFAULT_QUEUE_BEHAVIOUR, drop).
 
 %%
 %% PUBLIC API
@@ -26,31 +26,50 @@ start_link() ->
     start_link([]).
 
 start_link(Host, Port, Password) ->
-    start_link(Host, Port, Password, 100, infinity, drop).
+    start_link([{host, Host},
+                {port, Port},
+                {password, Password}]).
+
+start_link(Transport, Host, Port, Password) ->
+    start_link([{transport, Transport},
+                {host, Host},
+                {port, Port},
+                {password, Password}]).
 
 start_link(Host, Port, Password, ReconnectSleep,
+           MaxQueueSize, QueueBehaviour) ->
+    start_link([{host, Host},
+                {port, Port},
+                {password, Password},
+                {reconnect_sleep, ReconnectSleep},
+                {max_queue_size, MaxQueueSize},
+                {queue_behaviour, QueueBehaviour}]).
+
+start_link(Transport, Host, Port, Password, ReconnectSleep,
            MaxQueueSize, QueueBehaviour)
-  when is_list(Host) andalso
+  when is_atom(Transport) andalso
+       is_list(Host) andalso
        is_integer(Port) andalso
        is_list(Password) andalso
        (is_integer(ReconnectSleep) orelse ReconnectSleep =:= no_reconnect) andalso
        (is_integer(MaxQueueSize) orelse MaxQueueSize =:= infinity) andalso
        (QueueBehaviour =:= drop orelse QueueBehaviour =:= exit) ->
 
-    eredis_sub_client:start_link(Host, Port, Password, ReconnectSleep,
+    eredis_sub_client:start_link(Transport, Host, Port, Password, ReconnectSleep,
                                  MaxQueueSize, QueueBehaviour).
 
 
 %% @doc: Callback for starting from poolboy
--spec start_link(server_args()) -> {ok, Pid::pid()} | {error, Reason::term()}.
+-spec start_link(sub_args()) -> {ok, Pid::pid()} | {error, Reason::term()}.
 start_link(Args) ->
-    Host           = proplists:get_value(host, Args, "127.0.0.1"),
-    Port           = proplists:get_value(port, Args, 6379),
-    Password       = proplists:get_value(password, Args, ""),
-    ReconnectSleep = proplists:get_value(reconnect_sleep, Args, 100),
-    MaxQueueSize   = proplists:get_value(max_queue_size, Args, infinity),
-    QueueBehaviour = proplists:get_value(queue_behaviour, Args, drop),
-    start_link(Host, Port, Password, ReconnectSleep,
+    Transport      = proplists:get_value(transport, Args, ?DEFAULT_TRANSPORT),
+    Host           = proplists:get_value(host, Args, ?DEFAULT_HOST),
+    Port           = proplists:get_value(port, Args, ?DEFAULT_PORT(Transport)),
+    Password       = proplists:get_value(password, Args, ?DEFAULT_PASSWORD),
+    ReconnectSleep = proplists:get_value(reconnect_sleep, Args, ?DEFAULT_RECONNECT_SLEEP),
+    MaxQueueSize   = proplists:get_value(max_queue_size, Args, ?DEFAULT_MAX_QUEUE_SIZE),
+    QueueBehaviour = proplists:get_value(queue_behaviour, Args, ?DEFAULT_QUEUE_BEHAVIOUR),
+    start_link(Transport, Host, Port, Password, ReconnectSleep,
                MaxQueueSize, QueueBehaviour).
 
 stop(Pid) ->

@@ -25,23 +25,27 @@
 -include("eredis.hrl").
 
 %% API
--export([start_link/6, stop/1, select_database/2]).
-
--export([do_sync_command/2]).
+-export([start_link/7, stop/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
 -record(state, {
-          host :: string() | undefined,
+          transport :: transport(),
+          host :: string() | {local,term()} | undefined,
           port :: integer() | undefined,
           password :: binary() | undefined,
           database :: binary() | undefined,
           reconnect_sleep :: reconnect_sleep() | undefined,
           connect_timeout :: integer() | undefined,
 
-          socket :: port() | undefined,
+          transport_module :: module() | undefined,
+          socket :: gen_tcp:socket() | ssl:sslsocket() | undefined,
+          transport_data_tag :: atom(),
+          transport_closure_tag :: atom(),
+          transport_error_tag :: atom(),
+
           parser_state :: #pstate{} | undefined,
           queue :: eredis_queue() | undefined
 }).
@@ -50,15 +54,16 @@
 %% API
 %%
 
--spec start_link(Host::list(),
+-spec start_link(Transport::transport(),
+                 Host::list(),
                  Port::integer(),
                  Database::integer() | undefined,
                  Password::string(),
                  ReconnectSleep::reconnect_sleep(),
                  ConnectTimeout::integer() | undefined) ->
                         {ok, Pid::pid()} | {error, Reason::term()}.
-start_link(Host, Port, Database, Password, ReconnectSleep, ConnectTimeout) ->
-    gen_server:start_link(?MODULE, [Host, Port, Database, Password,
+start_link(Transport, Host, Port, Database, Password, ReconnectSleep, ConnectTimeout) ->
+    gen_server:start_link(?MODULE, [Transport, Host, Port, Database, Password,
                                     ReconnectSleep, ConnectTimeout], []).
 
 
@@ -69,8 +74,12 @@ stop(Pid) ->
 %% gen_server callbacks
 %%====================================================================
 
-init([Host, Port, Database, Password, ReconnectSleep, ConnectTimeout]) ->
-    State = #state{host = Host,
+init([Transport, Host, Port, Database, Password, ReconnectSleep, ConnectTimeout])
+  when Transport =:= tcp;
+       (Transport =:= ssl andalso is_list(Host)) % UNIX socket hosts not supported with ssl
+       ->
+    State = #state{transport = Transport,
+                   host = Host,
                    port = Port,
                    database = read_database(Database),
                    password = list_to_binary(Password),
@@ -126,20 +135,20 @@ handle_cast(_Msg, State) ->
 
 %% Receive data from socket, see handle_response/2. Match `Socket' to
 %% enforce sanity.
-handle_info({tcp, Socket, Bs}, #state{socket = Socket} = State) ->
-    ok = inet:setopts(Socket, [{active, once}]),
+handle_info({Tag, Socket, Bs}, #state{transport_data_tag = Tag, socket = Socket} = State) ->
+    ok = set_socket_opts([{active, once}], State),
     {noreply, handle_response(Bs, State)};
 
-handle_info({tcp, Socket, _}, #state{socket = OurSocket} = State)
+handle_info({Tag, Socket, _}, #state{transport_data_tag = Tag, socket = OurSocket} = State)
   when OurSocket =/= Socket ->
-    %% Ignore tcp messages when the socket in message doesn't match
+    %% Ignore data messages when the socket in message doesn't match
     %% our state. In order to test behavior around receiving
-    %% tcp_closed message with clients waiting in queue, we send a
+    %% closure message with clients waiting in queue, we send a
     %% fake tcp_close message. This allows us to ignore messages that
     %% arrive after that while we are reconnecting.
     {noreply, State};
 
-handle_info({tcp_error, _Socket, _Reason}, State) ->
+handle_info({Tag, _Socket, _Reason}, #state{transport_error_tag = Tag} = State) ->
     %% This will be followed by a close
     {noreply, State};
 
@@ -147,8 +156,8 @@ handle_info({tcp_error, _Socket, _Reason}, State) ->
 %% clients. If desired, spawn of a new process which will try to reconnect and
 %% notify us when Redis is ready. In the meantime, we can respond with
 %% an error message to all our clients.
-handle_info({tcp_closed, _Socket}, State) ->
-    maybe_reconnect(tcp_closed, State);
+handle_info({Tag, _Socket}, #state{transport_closure_tag = Tag} = State) ->
+    maybe_reconnect(Tag, State);
 
 %% Redis is ready to accept requests, the given Socket is a socket
 %% already connected and authenticated.
@@ -174,7 +183,7 @@ handle_info(_Info, State) ->
 terminate(_Reason, State) ->
     case State#state.socket of
         undefined -> ok;
-        Socket    -> gen_tcp:close(Socket)
+        Socket    -> (State#state.transport_module):close(Socket)
     end,
     ok.
 
@@ -193,7 +202,7 @@ do_request(_Req, _From, #state{socket = undefined} = State) ->
     {reply, {error, no_connection}, State};
 
 do_request(Req, From, State) ->
-    case gen_tcp:send(State#state.socket, Req) of
+    case (State#state.transport_module):send(State#state.socket, Req) of
         ok ->
             NewQueue = queue:in({1, From}, State#state.queue),
             {noreply, State#state{queue = NewQueue}};
@@ -209,7 +218,7 @@ do_pipeline(_Pipeline, _From, #state{socket = undefined} = State) ->
     {reply, {error, no_connection}, State};
 
 do_pipeline(Pipeline, From, State) ->
-    case gen_tcp:send(State#state.socket, Pipeline) of
+    case (State#state.transport_module):send(State#state.socket, Pipeline) of
         ok ->
             NewQueue = queue:in({length(Pipeline), From, []}, State#state.queue),
             {noreply, State#state{queue = NewQueue}};
@@ -300,19 +309,23 @@ safe_send(Pid, Value) ->
 %% returns something we don't expect, we crash. Returns {ok, State} or
 %% {SomeError, Reason}.
 connect(State) ->
-    {ok, {AFamily, Addr}} = get_addr(State#state.host),
-    Port = case AFamily of
-        local -> 0;
-        _ -> State#state.port
-    end,
-    case gen_tcp:connect(Addr, Port,
-                         [AFamily | ?SOCKET_OPTS], State#state.connect_timeout) of
+    {Module, Addr, Port, ConnectOpts,
+     DataTag, ClosureTag, ErrorTag} = transport_params(State),
+
+    case Module:connect(Addr, Port, ConnectOpts, State#state.connect_timeout) of
         {ok, Socket} ->
-            case authenticate(Socket, State#state.password) of
+            NewState =
+                State#state{transport_module = Module,
+                            socket = Socket,
+                            transport_data_tag = DataTag,
+                            transport_closure_tag = ClosureTag,
+                            transport_error_tag = ErrorTag},
+
+            case authenticate(NewState) of
                 ok ->
-                    case select_database(Socket, State#state.database) of
+                    case select_database(NewState) of
                         ok ->
-                            {ok, State#state{socket = Socket}};
+                            {ok, NewState};
                         {error, Reason} ->
                             {error, {select_error, Reason}}
                     end;
@@ -322,6 +335,23 @@ connect(State) ->
         {error, Reason} ->
             {error, {connection_error, Reason}}
     end.
+
+transport_params(State) when State#state.transport =:= tcp ->
+    Host = State#state.host,
+    {ok, {AFamily, Addr}} = get_addr(Host),
+    Port =
+        case AFamily of
+            local -> 0;
+            _ -> State#state.port
+        end,
+    {gen_tcp, Addr, Port, [AFamily | ?TCP_SOCKET_OPTS],
+     tcp, tcp_closed, tcp_error};
+transport_params(State) when State#state.transport =:= ssl ->
+    Host = State#state.host,
+    Addr = get_addr(Host),
+    Port = State#state.port,
+    {ssl, Addr, Port, ?SSL_SOCKET_OPTS,
+     ssl, ssl_closed, ssl_error}.
 
 get_addr({local, Path}) ->
     {ok, {local, {local, Path}}};
@@ -340,34 +370,47 @@ get_addr(Hostname) ->
             end
     end.
 
-select_database(_Socket, undefined) ->
+select_database(State)
+  when State#state.database =:= undefined;
+       State#state.database =:= <<>> ->
     ok;
-select_database(_Socket, <<"0">>) ->
-    ok;
-select_database(Socket, Database) ->
-    do_sync_command(Socket, ["SELECT", " ", Database, "\r\n"]).
+select_database(State) ->
+    Database = State#state.database,
+    do_sync_command(["SELECT", " ", Database, "\r\n"], State).
 
-authenticate(_Socket, <<>>) ->
+authenticate(State)
+  when State#state.password =:= <<>> ->
     ok;
-authenticate(Socket, Password) ->
-    do_sync_command(Socket, ["AUTH", " \"", Password, "\"\r\n"]).
+authenticate(State) ->
+    Password = State#state.password,
+    do_sync_command(["AUTH", " \"", Password, "\"\r\n"], State).
 
 %% @doc: Executes the given command synchronously, expects Redis to
 %% return "+OK\r\n", otherwise it will fail.
-do_sync_command(Socket, Command) ->
-    ok = inet:setopts(Socket, [{active, false}]),
-    case gen_tcp:send(Socket, Command) of
+do_sync_command(Command, State) ->
+    ok = set_socket_opts([{active, false}], State),
+    TransportModule = State#state.transport_module,
+    Socket = State#state.socket,
+    case TransportModule:send(Socket, Command) of
         ok ->
             %% Hope there's nothing else coming down on the socket..
-            case gen_tcp:recv(Socket, 0, ?RECV_TIMEOUT) of
+            case TransportModule:recv(Socket, 0, ?RECV_TIMEOUT) of
                 {ok, <<"+OK\r\n">>} ->
-                    ok = inet:setopts(Socket, [{active, once}]),
+                    ok = set_socket_opts([{active, once}], State),
                     ok;
                 Other ->
                     {error, {unexpected_data, Other}}
             end;
         {error, Reason} ->
             {error, Reason}
+    end.
+
+set_socket_opts(Opts, State) ->
+    case State#state.transport_module of
+        gen_tcp ->
+            inet:setopts(State#state.socket, Opts);
+        ssl ->
+            ssl:setopts(State#state.socket, Opts)
     end.
 
 maybe_reconnect(Reason, #state{reconnect_sleep = no_reconnect, queue = Queue} = State) ->
@@ -394,9 +437,9 @@ maybe_reconnect(Reason, #state{queue = Queue} = State) ->
 %% connection, give the socket to the redis client.
 reconnect_loop(Client, #state{reconnect_sleep = ReconnectSleep} = State) ->
     case catch(connect(State)) of
-        {ok, #state{socket = Socket}} ->
+        {ok, #state{transport_module = TransportModule, socket = Socket}} ->
             Client ! {connection_ready, Socket},
-            gen_tcp:controlling_process(Socket, Client),
+            TransportModule:controlling_process(Socket, Client),
             Msgs = get_all_messages([]),
             [Client ! M || M <- Msgs];
         {error, _Reason} ->

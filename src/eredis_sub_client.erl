@@ -11,10 +11,11 @@
 -behaviour(gen_server).
 -include("eredis.hrl").
 -include("eredis_sub.hrl").
+-include("eredis_defaults.hrl").
 
 
 %% API
--export([start_link/6, stop/1]).
+-export([start_link/7, stop/1]).
 
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
@@ -24,15 +25,16 @@
 %% API
 %%
 
--spec start_link(Host::list(),
+-spec start_link(Transport::transport(),
+                 Host::list(),
                  Port::integer(),
                  Password::string(),
                  ReconnectSleep::reconnect_sleep(),
                  MaxQueueSize::integer() | infinity,
                  QueueBehaviour::drop | exit) ->
                         {ok, Pid::pid()} | {error, Reason::term()}.
-start_link(Host, Port, Password, ReconnectSleep, MaxQueueSize, QueueBehaviour) ->
-    Args = [Host, Port, Password, ReconnectSleep, MaxQueueSize, QueueBehaviour],
+start_link(Transport, Host, Port, Password, ReconnectSleep, MaxQueueSize, QueueBehaviour) ->
+    Args = [Transport, Host, Port, Password, ReconnectSleep, MaxQueueSize, QueueBehaviour],
     gen_server:start_link(?MODULE, Args, []).
 
 
@@ -43,8 +45,9 @@ stop(Pid) ->
 %% gen_server callbacks
 %%====================================================================
 
-init([Host, Port, Password, ReconnectSleep, MaxQueueSize, QueueBehaviour]) ->
-    State = #state{host            = Host,
+init([Transport, Host, Port, Password, ReconnectSleep, MaxQueueSize, QueueBehaviour]) ->
+    State = #state{transport = Transport,
+                   host            = Host,
                    port            = Port,
                    password        = list_to_binary(Password),
                    reconnect_sleep = ReconnectSleep,
@@ -56,7 +59,7 @@ init([Host, Port, Password, ReconnectSleep, MaxQueueSize, QueueBehaviour]) ->
 
     case connect(State) of
         {ok, NewState} ->
-            ok = inet:setopts(NewState#state.socket, [{active, once}]),
+            ok = set_socket_opts([{active, once}], NewState),
             {ok, NewState};
         {error, Reason} ->
             {stop, Reason}
@@ -107,14 +110,14 @@ handle_cast({ack_message, Pid},
 
 handle_cast({subscribe, Pid, Channels}, #state{controlling_process = {_, Pid}} = State) ->
     Command = eredis:create_multibulk(["SUBSCRIBE" | Channels]),
-    ok = gen_tcp:send(State#state.socket, Command),
+    ok = (State#state.transport_module):send(State#state.socket, Command),
     NewChannels = add_channels(Channels, State#state.channels),
     {noreply, State#state{channels = NewChannels}};
 
 
 handle_cast({psubscribe, Pid, Channels}, #state{controlling_process = {_, Pid}} = State) ->
     Command = eredis:create_multibulk(["PSUBSCRIBE" | Channels]),
-    ok = gen_tcp:send(State#state.socket, Command),
+    ok = (State#state.transport_module):send(State#state.socket, Command),
     NewChannels = add_channels(Channels, State#state.channels),
     {noreply, State#state{channels = NewChannels}};
 
@@ -122,7 +125,7 @@ handle_cast({psubscribe, Pid, Channels}, #state{controlling_process = {_, Pid}} 
 
 handle_cast({unsubscribe, Pid, Channels}, #state{controlling_process = {_, Pid}} = State) ->
     Command = eredis:create_multibulk(["UNSUBSCRIBE" | Channels]),
-    ok = gen_tcp:send(State#state.socket, Command),
+    ok = (State#state.transport_module):send(State#state.socket, Command),
     NewChannels = remove_channels(Channels, State#state.channels),
     {noreply, State#state{channels = NewChannels}};
 
@@ -130,7 +133,7 @@ handle_cast({unsubscribe, Pid, Channels}, #state{controlling_process = {_, Pid}}
 
 handle_cast({punsubscribe, Pid, Channels}, #state{controlling_process = {_, Pid}} = State) ->
     Command = eredis:create_multibulk(["PUNSUBSCRIBE" | Channels]),
-    ok = gen_tcp:send(State#state.socket, Command),
+    ok = (State#state.transport_module):send(State#state.socket, Command),
     NewChannels = remove_channels(Channels, State#state.channels),
     {noreply, State#state{channels = NewChannels}};
 
@@ -144,8 +147,8 @@ handle_cast(_Msg, State) ->
 
 
 %% Receive data from socket, see handle_response/2
-handle_info({tcp, _Socket, Bs}, State) ->
-    ok = inet:setopts(State#state.socket, [{active, once}]),
+handle_info({Tag, _Socket, Bs}, #state{transport_data_tag = Tag} = State) ->
+    ok = set_socket_opts([{active, once}], State),
 
     NewState = handle_response(Bs, State),
     case queue:len(NewState#state.msg_queue) > NewState#state.max_queue_size of
@@ -162,7 +165,7 @@ handle_info({tcp, _Socket, Bs}, State) ->
             {noreply, NewState}
     end;
 
-handle_info({tcp_error, _Socket, _Reason}, State) ->
+handle_info({Tag, _Socket, _Reason}, #state{transport_error_tag = Tag} = State) ->
     %% This will be followed by a close
     {noreply, State};
 
@@ -170,11 +173,11 @@ handle_info({tcp_error, _Socket, _Reason}, State) ->
 %% clients. If desired, spawn of a new process which will try to reconnect and
 %% notify us when Redis is ready. In the meantime, we can respond with
 %% an error message to all our clients.
-handle_info({tcp_closed, _Socket}, #state{reconnect_sleep = no_reconnect} = State) ->
+handle_info({Tag, _Socket}, #state{transport_closure_tag = Tag, reconnect_sleep = no_reconnect} = State) ->
     %% If we aren't going to reconnect, then there is nothing else for this process to do.
     {stop, normal, State#state{socket = undefined}};
 
-handle_info({tcp_closed, _Socket}, State) ->
+handle_info({Tag, _Socket}, #state{transport_closure_tag = Tag} = State) ->
     Self = self(),
     send_to_controller({eredis_disconnected, Self}, State),
     spawn(fun() -> reconnect_loop(Self, State) end),
@@ -198,8 +201,9 @@ handle_info({reconnect_failed, Reason}, State) ->
 %% already connected and authenticated.
 handle_info({connection_ready, Socket}, #state{socket = undefined} = State) ->
     send_to_controller({eredis_connected, self()}, State),
-    ok = inet:setopts(Socket, [{active, once}]),
-    {noreply, State#state{socket = Socket}};
+    NewState = State#state{socket = Socket},
+    ok = set_socket_opts([{active, once}], NewState),
+    {noreply, NewState};
 
 
 %% Our controlling process is down.
@@ -220,7 +224,7 @@ handle_info(_Info, State) ->
 terminate(_Reason, State) ->
     case State#state.socket of
         undefined -> ok;
-        Socket    -> gen_tcp:close(Socket)
+        Socket    -> (State#state.transport_module):close(Socket)
     end,
     ok.
 
@@ -310,11 +314,21 @@ queue_or_send(Msg, State) ->
 %% synchronous and if Redis returns something we don't expect, we
 %% crash. Returns {ok, State} or {error, Reason}.
 connect(State) ->
-    case gen_tcp:connect(State#state.host, State#state.port, ?SOCKET_OPTS) of
+    {Module, ConnectOpts,
+     DataTag, ClosureTag, ErrorTag} = transport_params(State),
+
+    case Module:connect(State#state.host, State#state.port, ConnectOpts, infinity) of
         {ok, Socket} ->
-            case authenticate(Socket, State#state.password) of
+            NewState =
+                State#state{transport_module = Module,
+                            socket = Socket,
+                            transport_data_tag = DataTag,
+                            transport_closure_tag = ClosureTag,
+                            transport_error_tag = ErrorTag},
+
+            case authenticate(NewState) of
                 ok ->
-                    {ok, State#state{socket = Socket}};
+                    {ok, NewState};
                 {error, Reason} ->
                     {error, {authentication_error, Reason}}
             end;
@@ -322,12 +336,47 @@ connect(State) ->
             {error, {connection_error, Reason}}
     end.
 
+transport_params(State) when State#state.transport =:= tcp ->
+    {gen_tcp, ?TCP_SOCKET_OPTS,
+     tcp, tcp_closed, tcp_error};
+transport_params(State) when State#state.transport =:= ssl ->
+    {ssl, ?SSL_SOCKET_OPTS,
+     ssl, ssl_closed, ssl_error}.
 
-authenticate(_Socket, <<>>) ->
+authenticate(State)
+  when State#state.password =:= <<>> ->
     ok;
-authenticate(Socket, Password) ->
-    eredis_client:do_sync_command(Socket, ["AUTH", " \"", Password, "\"\r\n"]).
+authenticate(State) ->
+    Password = State#state.password,
+    do_sync_command(["AUTH", " \"", Password, "\"\r\n"], State).
 
+%% @doc: Executes the given command synchronously, expects Redis to
+%% return "+OK\r\n", otherwise it will fail.
+do_sync_command(Command, State) ->
+    ok = set_socket_opts([{active, false}], State),
+    TransportModule = State#state.transport_module,
+    Socket = State#state.socket,
+    case TransportModule:send(Socket, Command) of
+        ok ->
+            %% Hope there's nothing else coming down on the socket..
+            case TransportModule:recv(Socket, 0, ?RECV_TIMEOUT) of
+                {ok, <<"+OK\r\n">>} ->
+                    ok = set_socket_opts([{active, once}], State),
+                    ok;
+                Other ->
+                    {error, {unexpected_data, Other}}
+            end;
+        {error, Reason} ->
+            {error, Reason}
+    end.
+
+set_socket_opts(Opts, State) ->
+    case State#state.transport_module of
+        gen_tcp ->
+            inet:setopts(State#state.socket, Opts);
+        ssl ->
+            ssl:setopts(State#state.socket, Opts)
+    end.
 
 %% @doc: Loop until a connection can be established, this includes
 %% successfully issuing the auth and select calls. When we have a
@@ -335,8 +384,8 @@ authenticate(Socket, Password) ->
 reconnect_loop(Client, #state{reconnect_sleep=ReconnectSleep}=State) ->
     Client ! reconnect_attempt,
     case catch(connect(State)) of
-        {ok, #state{socket = Socket}} ->
-            gen_tcp:controlling_process(Socket, Client),
+        {ok, #state{transport_module = TransportModule, socket = Socket}} ->
+            TransportModule:controlling_process(Socket, Client),
             Client ! {connection_ready, Socket};
         {error, Reason} ->
             Client ! {reconnect_failed, Reason},

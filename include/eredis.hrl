@@ -1,9 +1,26 @@
 %% Public types
 
+-type transport() :: tcp | ssl.
+
 -type reconnect_sleep() :: no_reconnect | integer().
 
--type option() :: {host, string()} | {port, integer()} | {database, string()} | {password, string()} | {reconnect_sleep, reconnect_sleep()}.
+-type option() ::
+        {transport, transport()} |
+        {host, string()} |
+        {host, {local, term()}} |
+        {port, integer()} |
+        {database, string()} |
+        {database, undefined} |
+        {password, string()} |
+        {reconnect_sleep, reconnect_sleep()} |
+        {connect_timeout, integer()}.
 -type server_args() :: [option()].
+
+-type sub_option() ::
+        option() |
+        {max_queue_size, non_neg_integer() | infinity} |
+        {queue_behaviour, drop | exit}.
+-type sub_args() :: [sub_option()].
 
 -type return_value() :: undefined | binary() | [binary() | nonempty_list()].
 
@@ -35,6 +52,9 @@
 
 -define(SOCKET_OPTS, [binary, {active, once}, {packet, raw}, {reuseaddr, false},
                       {send_timeout, ?SEND_TIMEOUT}]).
+
+-define(TCP_SOCKET_OPTS, ?SOCKET_OPTS).
+-define(SSL_SOCKET_OPTS, ?SOCKET_OPTS). % TODO
 
 -define(RECV_TIMEOUT, 5000).
 -define(SEND_TIMEOUT, 5000).

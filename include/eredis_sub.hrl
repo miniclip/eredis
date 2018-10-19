@@ -1,11 +1,17 @@
 %% State in eredis_sub_client
 -record(state, {
+          transport :: transport(),
           host :: string() | undefined,
           port :: integer() | undefined,
           password :: binary() | undefined,
           reconnect_sleep :: integer() | undefined | no_reconnect,
 
-          socket :: port() | undefined,
+          transport_module :: module() | undefined,
+          socket :: gen_tcp:socket() | ssl:sslsocket() | undefined,
+          transport_data_tag :: atom(),
+          transport_closure_tag :: atom(),
+          transport_error_tag :: atom(),
+
           parser_state :: #pstate{} | undefined,
 
           %% Channels we should subscribe to
