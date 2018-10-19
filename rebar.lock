@@ -1,1 +1,12 @@
-[].
+[{<<"certifi">>,
+  {git,"https://github.com/certifi/erlang-certifi.git",
+       {ref,"4ad4051fd3f1d6ae8f9c4fe5eb3fb4f1cd66363e"}},
+  0},
+ {<<"parse_trans">>,
+  {git,"https://github.com/uwiger/parse_trans.git",
+       {ref,"76abb347c3c1d00fb0ccf9e4b43e22b3d2288484"}},
+  0},
+ {<<"ssl_verify_fun">>,
+  {git,"https://github.com/deadtrickster/ssl_verify_fun.erl.git",
+       {ref,"c5718226b0b9f3d1a38ef6ca3c3b4c75f53dda92"}},
+  0}].

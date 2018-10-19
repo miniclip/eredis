@@ -350,7 +350,8 @@ transport_params(State) when State#state.transport =:= ssl ->
     Host = State#state.host,
     Addr = get_addr(Host),
     Port = State#state.port,
-    {ssl, Addr, Port, ?SSL_SOCKET_OPTS,
+    ConnectOpts = eredis_security:secure_ssl_opts(Host, ?SSL_SOCKET_OPTS),
+    {ssl, Addr, Port, ConnectOpts,
      ssl, ssl_closed, ssl_error}.
 
 get_addr({local, Path}) ->

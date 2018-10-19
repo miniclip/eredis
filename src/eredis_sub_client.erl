@@ -340,7 +340,9 @@ transport_params(State) when State#state.transport =:= tcp ->
     {gen_tcp, ?TCP_SOCKET_OPTS,
      tcp, tcp_closed, tcp_error};
 transport_params(State) when State#state.transport =:= ssl ->
-    {ssl, ?SSL_SOCKET_OPTS,
+    Host = State#state.host,
+    ConnectOpts = eredis_security:secure_ssl_opts(Host, ?SSL_SOCKET_OPTS),
+    {ssl, ConnectOpts,
      ssl, ssl_closed, ssl_error}.
 
 authenticate(State)
