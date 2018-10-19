@@ -2,7 +2,7 @@ APP=eredis
 
 PRE17 := $(shell ERL_FLAGS="" erl -eval 'io:format("~s~n", [case re:run(erlang:system_info(otp_release), "^R") of nomatch -> ""; _ -> pre17 end]), halt().' -noshell)
 
-.PHONY: all compile clean Emakefile
+.PHONY: all compile clean Emakefile test
 
 all: compile
 
@@ -31,3 +31,5 @@ endif
 Emakefile: Emakefile.src
 	sed "s/{{EXTRA_OPTS}}/$(EXTRA_OPTS)/" $< > $@
 
+test:
+	rebar3 eunit
