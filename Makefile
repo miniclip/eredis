@@ -2,7 +2,7 @@ APP=eredis
 
 PRE17 := $(shell ERL_FLAGS="" erl -eval 'io:format("~s~n", [case re:run(erlang:system_info(otp_release), "^R") of nomatch -> ""; _ -> pre17 end]), halt().' -noshell)
 
-.PHONY: all compile clean Emakefile test
+.PHONY: all compile clean Emakefile test check dialyzer
 
 all: compile
 
@@ -33,3 +33,8 @@ Emakefile: Emakefile.src
 
 test:
 	rebar3 eunit
+
+check: dialyzer
+
+dialyzer:
+	rebar3 dialyzer
