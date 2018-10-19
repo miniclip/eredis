@@ -185,7 +185,7 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 
--spec do_request(Req::iolist(), From::pid(), #state{}) ->
+-spec do_request(Req::iolist(), From::undefined | pid(), #state{}) ->
                         {noreply, #state{}} | {reply, Reply::any(), #state{}}.
 %% @doc: Sends the given request to redis. If we do not have a
 %% connection, returns error.
@@ -267,7 +267,6 @@ reply(Value, Queue) ->
 
 %% @doc Send `Value' to each client in queue. Only useful for sending
 %% an error message. Any in-progress reply data is ignored.
--spec reply_all(any(), eredis_queue()) -> ok.
 reply_all(Value, Queue) ->
     case queue:peek(Queue) of
         empty ->

@@ -175,12 +175,12 @@ psub_example() ->
 
 pub_example() ->
     {ok, P} = eredis:start_link(),
-    eredis:q(P, ["PUBLISH", "foo", "bar"]),
+    {ok, <<_/binary>>} = eredis:q(P, ["PUBLISH", "foo", "bar"]),
     eredis_client:stop(P).
 
 ppub_example() ->
     {ok, P} = eredis:start_link(),
-    eredis:q(P, ["PUBLISH", "foo123", "bar"]),
+    {ok, <<_/binary>>} = eredis:q(P, ["PUBLISH", "foo123", "bar"]),
     eredis_client:stop(P).
 
 

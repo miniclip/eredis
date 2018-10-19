@@ -134,7 +134,7 @@ cast(Client, Command) ->
     Request = {request, create_multibulk(Command)},
     gen_server:cast(Client, Request).
 
--spec create_multibulk(Args::[any()]) -> Command::iolist().
+-spec create_multibulk(Args::[any()]) -> Command::[[<<_:8,_:_*8>> | [binary() | [any()] | char()]],...].
 %% @doc: Creates a multibulk command with all the correct size headers
 create_multibulk(Args) ->
     ArgCount = [<<$*>>, integer_to_list(length(Args)), <<?NL>>],
