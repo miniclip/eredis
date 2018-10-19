@@ -70,11 +70,12 @@ exec_nil_test() ->
 pipeline_test() ->
     C = c(),
 
-    P1 = [["SET", a, "1"],
+    P1 = [["DEL", b],
+          ["SET", a, "1"],
           ["LPUSH", b, "3"],
           ["LPUSH", b, "2"]],
 
-    ?assertEqual([{ok, <<"OK">>}, {ok, <<"1">>}, {ok, <<"2">>}],
+    ?assertMatch([{ok, _}, {ok, <<"OK">>}, {ok, <<"1">>}, {ok, <<"2">>}],
                  eredis:qp(C, P1)),
 
     P2 = [["MULTI"],
