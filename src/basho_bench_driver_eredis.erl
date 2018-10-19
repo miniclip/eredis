@@ -5,6 +5,8 @@
 
 -export([value_gen/1]).
 
+-dialyzer({nowarn_function, new/1}).
+
 new(_Id) ->
     case whereis(eredis_driver) of
         undefined ->
