@@ -15,7 +15,7 @@
 
 -export([start_link/0, start_link/1, start_link/2, start_link/3, start_link/4,
          start_link/5, start_link/6, stop/1, q/2, q/3, qp/2, qp/3, q_noreply/2,
-         q_async/2, q_async/3]).
+         q_async/2, q_async/3, qp_async/2, qp_async/3]).
 
 %% Exported for testing
 -export([create_multibulk/1]).
@@ -115,6 +115,19 @@ q_async(Client, Command) ->
 q_async(Client, Command, Pid) when is_pid(Pid) ->
     Request = {request, create_multibulk(Command), Pid},
     gen_server:cast(Client, Request).
+
+-spec qp_async(Client::client(), Pipeline::pipeline()) -> {await, Tag::reference()}.
+% @doc Executes the pipeline, and sends a message to this process with the response (with either error or success).
+% Message is of the form `{Tag, Reply}', where `Reply' is the reply expected from `qp/2'.
+qp_async(Client, Pipeline) ->
+    qp_async(Client, Pipeline, self()).
+
+qp_async(Client, Pipeline, Pid) when is_pid(Pid) ->
+    Tag = make_ref(),
+    From = {Pid, Tag},
+    Request = {pipeline, [create_multibulk(Command) || Command <- Pipeline], From},
+    gen_server:cast(Client, Request),
+    {await, Tag}.
 
 %%
 %% INTERNAL HELPERS

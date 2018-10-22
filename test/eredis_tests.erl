@@ -5,6 +5,12 @@
 
 -import(eredis, [create_multibulk/1]).
 
+-define(assertReceive(Pattern),
+        (fun () -> receive Msg -> ?assertMatch((Pattern), Msg)
+                   after 5000 -> exit(timeout)
+                   end
+         end)()).
+
 connect_test() ->
     ?assertMatch({ok, _}, eredis:start_link("127.0.0.1", 6379)),
     ?assertMatch({ok, _}, eredis:start_link("localhost", 6379)).
@@ -122,6 +128,15 @@ q_async_test() ->
             ?assertEqual(Msg, {ok, <<"bar">>}),
             ?assertMatch({ok, _}, eredis:q(C, ["DEL", foo]))
     end.
+
+qp_async_test() ->
+    C = c(),
+    {await, Tag1} = eredis:qp_async(C, [["SET", foo, 1]]),
+    {await, Tag2} = eredis:qp_async(C, [["INCR", foo], ["INCR", foo]]),
+    {await, Tag3} = eredis:qp_async(C, [["DEL", foo], ["INCR", foo]]),
+    ?assertReceive({Tag1, [{ok, <<"OK">>}]}),
+    ?assertReceive({Tag2, [{ok, <<"2">>}, {ok, <<"3">>}]}),
+    ?assertReceive({Tag3, [{ok, <<"1">>}, {ok, <<"1">>}]}).
 
 c() ->
     Res = eredis:start_link(),
