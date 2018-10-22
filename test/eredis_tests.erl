@@ -119,6 +119,12 @@ q_noreply_test() ->
     %% Even though q_noreply doesn't wait, it is sent before subsequent requests:
     ?assertEqual({ok, <<"bar">>}, eredis:q(C, ["GET", foo])).
 
+qp_noreply_test() ->
+    C = c(),
+    ?assertEqual(ok, eredis:qp_noreply(C, [["GET", foo], ["SET", foo, bar]])),
+    %% Even though qp_noreply doesn't wait, it is sent before subsequent requests:
+    ?assertEqual({ok, <<"bar">>}, eredis:q(C, ["GET", foo])).
+
 q_async_test() ->
     C = c(),
     ?assertEqual({ok, <<"OK">>}, eredis:q(C, ["SET", foo, bar])),

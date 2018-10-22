@@ -121,6 +121,14 @@ handle_cast({request, Req, Pid}, State) ->
             {noreply, State1}
     end;
 
+handle_cast({pipeline, Req}, State) ->
+    case do_pipeline(Req, undefined, State) of
+        {reply, _Reply, State1} ->
+            {noreply, State1};
+        {noreply, State1} ->
+            {noreply, State1}
+    end;
+
 handle_cast({pipeline, Req, From}, State) ->
     case do_pipeline(Req, From, State) of
         {reply, Reply, State1} ->
@@ -210,7 +218,7 @@ do_request(Req, From, State) ->
             {reply, {error, Reason}, State}
     end.
 
--spec do_pipeline(Pipeline::pipeline(), From::pid() | {pid(),reference()}, #state{}) ->
+-spec do_pipeline(Pipeline::pipeline(), From::undefined | pid() | {pid(),reference()}, #state{}) ->
                          {noreply, #state{}} | {reply, Reply::any(), #state{}}.
 %% @doc: Sends the entire pipeline to redis. If we do not have a
 %% connection, returns error.

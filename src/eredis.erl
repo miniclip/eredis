@@ -14,8 +14,8 @@
 -define(TIMEOUT, 5000).
 
 -export([start_link/0, start_link/1, start_link/2, start_link/3, start_link/4,
-         start_link/5, start_link/6, stop/1, q/2, q/3, qp/2, qp/3, q_noreply/2,
-         q_async/2, q_async/3, qp_async/2, qp_async/3]).
+         start_link/5, start_link/6, stop/1, q/2, q/3, qp/2, qp/3,
+         q_noreply/2, qp_noreply/2, q_async/2, q_async/3, qp_async/2, qp_async/3]).
 
 %% Exported for testing
 -export([create_multibulk/1]).
@@ -103,6 +103,13 @@ qp(Client, Pipeline, Timeout) ->
 %% @see q/2
 q_noreply(Client, Command) ->
     cast(Client, Command).
+
+-spec qp_noreply(Client::client(), Pipeline::pipeline()) -> ok.
+%% @doc Executes the pipeline but does not wait for a response and ignores any errors.
+%% @see q/2
+qp_noreply(Client, Pipeline) ->
+    Request = {pipeline, [create_multibulk(Command) || Command <- Pipeline]},
+    gen_server:cast(Client, Request).
 
 -spec q_async(Client::client(), Command::[any()]) -> ok.
 % @doc Executes the command, and sends a message to this process with the response (with either error or success). Message is of the form `{response, Reply}', where `Reply' is the reply expected from `q/2'.
