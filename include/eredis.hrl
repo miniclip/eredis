@@ -54,7 +54,7 @@
                       {send_timeout, ?SEND_TIMEOUT}]).
 
 -define(TCP_SOCKET_OPTS, ?SOCKET_OPTS).
--define(SSL_SOCKET_OPTS, ?SOCKET_OPTS). % TODO
+-define(SSL_SOCKET_OPTS, ?SOCKET_OPTS).
 
 -define(RECV_TIMEOUT, 5000).
 -define(SEND_TIMEOUT, 5000).
