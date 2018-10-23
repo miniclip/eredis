@@ -5,6 +5,12 @@
 
 -import(eredis, [create_multibulk/1]).
 
+-define(assertReceive(Pattern),
+        (fun () -> receive Msg -> ?assertMatch((Pattern), Msg)
+                   after 5000 -> exit(timeout)
+                   end
+         end)()).
+
 connect_test() ->
     ?assertMatch({ok, _}, eredis:start_link("127.0.0.1", 6379)),
     ?assertMatch({ok, _}, eredis:start_link("localhost", 6379)).
@@ -70,11 +76,12 @@ exec_nil_test() ->
 pipeline_test() ->
     C = c(),
 
-    P1 = [["SET", a, "1"],
+    P1 = [["DEL", b],
+          ["SET", a, "1"],
           ["LPUSH", b, "3"],
           ["LPUSH", b, "2"]],
 
-    ?assertEqual([{ok, <<"OK">>}, {ok, <<"1">>}, {ok, <<"2">>}],
+    ?assertMatch([{ok, _}, {ok, <<"OK">>}, {ok, <<"1">>}, {ok, <<"2">>}],
                  eredis:qp(C, P1)),
 
     P2 = [["MULTI"],
@@ -112,6 +119,12 @@ q_noreply_test() ->
     %% Even though q_noreply doesn't wait, it is sent before subsequent requests:
     ?assertEqual({ok, <<"bar">>}, eredis:q(C, ["GET", foo])).
 
+qp_noreply_test() ->
+    C = c(),
+    ?assertEqual(ok, eredis:qp_noreply(C, [["GET", foo], ["SET", foo, bar]])),
+    %% Even though qp_noreply doesn't wait, it is sent before subsequent requests:
+    ?assertEqual({ok, <<"bar">>}, eredis:q(C, ["GET", foo])).
+
 q_async_test() ->
     C = c(),
     ?assertEqual({ok, <<"OK">>}, eredis:q(C, ["SET", foo, bar])),
@@ -121,6 +134,15 @@ q_async_test() ->
             ?assertEqual(Msg, {ok, <<"bar">>}),
             ?assertMatch({ok, _}, eredis:q(C, ["DEL", foo]))
     end.
+
+qp_async_test() ->
+    C = c(),
+    {await, Tag1} = eredis:qp_async(C, [["SET", foo, 1]]),
+    {await, Tag2} = eredis:qp_async(C, [["INCR", foo], ["INCR", foo]]),
+    {await, Tag3} = eredis:qp_async(C, [["DEL", foo], ["INCR", foo]]),
+    ?assertReceive({Tag1, [{ok, <<"OK">>}]}),
+    ?assertReceive({Tag2, [{ok, <<"2">>}, {ok, <<"3">>}]}),
+    ?assertReceive({Tag3, [{ok, <<"1">>}, {ok, <<"1">>}]}).
 
 c() ->
     Res = eredis:start_link(),
