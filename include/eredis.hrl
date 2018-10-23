@@ -51,7 +51,8 @@
 -define(NL, "\r\n").
 
 -define(SOCKET_OPTS, [binary, {active, once}, {packet, raw}, {reuseaddr, false},
-                      {send_timeout, ?SEND_TIMEOUT}]).
+                      {send_timeout, ?SEND_TIMEOUT},
+                      {keepalive, true}]).
 
 -define(TCP_SOCKET_OPTS, ?SOCKET_OPTS).
 -define(SSL_SOCKET_OPTS, ?SOCKET_OPTS).
