@@ -4,6 +4,7 @@
               {modules,[eredis,eredis_client,eredis_parser,eredis_sub,
                         eredis_sub_client]},
               {registered,[]},
-              {applications,[kernel,stdlib]},
+              {applications,[kernel,stdlib,ssl,public_key,certifi,parse_trans,
+                             ssl_verify_fun]},
               {maintainers,["Knut Nesheim"]},
               {licenses,["MIT"]}]}.
