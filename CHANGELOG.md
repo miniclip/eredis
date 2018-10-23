@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## v1.3.0
+
+* Added:
+    * support for SSL / TLS connections [Guilherme Andrade]
+    * asynchronous pipelining [Guilherme Andrade]
+    * no-reply pipelining [Guilherme Andrade]
+* Fixed:
+    * Dialyzer warnings
+
 ## v1.1.0
 
 * Merged a ton of of old and neglected pull requests. Thanks to
