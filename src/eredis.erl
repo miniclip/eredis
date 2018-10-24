@@ -159,17 +159,21 @@ qp_noreply(Client, Pipeline) ->
     Request = {pipeline, [create_multibulk(Command) || Command <- Pipeline]},
     gen_server:cast(Client, Request).
 
--spec q_async(Client::client(), Command::[any()]) -> ok.
-% @doc Executes the command, and sends a message to this process with the response (with either error or success). Message is of the form `{response, Reply}', where `Reply' is the reply expected from `q/2'.
+-spec q_async(Client::client(), Command::[any()]) -> {await, Tag::reference()}.
+% @doc Executes the command, and sends a message to this process with the response (with either error or success).
+% Message is of the form `{Tag, Reply}', where `Reply' is the reply expected from `q/2'.
 q_async(Client, Command) ->
     q_async(Client, Command, self()).
 
--spec q_async(Client::client(), Command::[any()], Pid::pid()|atom()) -> ok.
+-spec q_async(Client::client(), Command::[any()], Pid::pid()|atom()) -> {await, Tag::reference()}.
 %% @doc Executes the command, and sends a message to `Pid' with the response (with either or success).
 %% @see 1_async/2
 q_async(Client, Command, Pid) when is_pid(Pid) ->
-    Request = {request, create_multibulk(Command), Pid},
-    gen_server:cast(Client, Request).
+    Tag = make_ref(),
+    From = {Pid, Tag},
+    Request = {request, create_multibulk(Command), From},
+    gen_server:cast(Client, Request),
+    {await, Tag}.
 
 -spec qp_async(Client::client(), Pipeline::pipeline()) -> {await, Tag::reference()}.
 % @doc Executes the pipeline, and sends a message to this process with the response (with either error or success).

@@ -122,10 +122,10 @@ handle_cast({request, Req}, State) ->
         {noreply, State1} ->
             {noreply, State1}
     end;
-handle_cast({request, Req, Pid}, State) ->
-    case do_request(Req, Pid, State) of
+handle_cast({request, Req, From}, State) ->
+    case do_request(Req, From, State) of
         {reply, Reply, State1} ->
-            safe_send(Pid, {response, Reply}),
+            safe_reply(From, Reply),
             {noreply, State1};
         {noreply, State1} ->
             {noreply, State1}
