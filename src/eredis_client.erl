@@ -31,6 +31,10 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
+-ifdef(TEST).
+-export([get_socket/1]).
+-endif.
+
 -record(state, {
           transport :: transport(),
           host :: string() | {local,term()} | undefined,
@@ -38,7 +42,7 @@
           password :: binary() | undefined,
           database :: binary() | undefined,
           reconnect_sleep :: reconnect_sleep() | undefined,
-          connect_timeout :: integer() | undefined,
+          connect_timeout :: non_neg_integer() | undefined,
 
           transport_module :: module() | undefined,
           socket :: gen_tcp:socket() | ssl:sslsocket() | undefined,
@@ -60,15 +64,20 @@
                  Database::integer() | undefined,
                  Password::string(),
                  ReconnectSleep::reconnect_sleep(),
-                 ConnectTimeout::integer() | undefined) ->
+                 ConnectTimeout::non_neg_integer() | undefined) ->
                         {ok, Pid::pid()} | {error, Reason::term()}.
 start_link(Transport, Host, Port, Database, Password, ReconnectSleep, ConnectTimeout) ->
     gen_server:start_link(?MODULE, [Transport, Host, Port, Database, Password,
                                     ReconnectSleep, ConnectTimeout], []).
 
-
 stop(Pid) ->
     gen_server:call(Pid, stop).
+
+-ifdef(TEST).
+get_socket(Pid) ->
+    State = sys:get_state(Pid),
+    State#state.socket.
+-endif.
 
 %%====================================================================
 %% gen_server callbacks
@@ -89,29 +98,22 @@ init([Transport, Host, Port, Database, Password, ReconnectSleep, ConnectTimeout]
                    parser_state = eredis_parser:init(),
                    queue = queue:new()},
 
-    case ReconnectSleep of
-        no_reconnect ->
-            case connect(State) of
-                {ok, _NewState} = Res -> Res;
-                {error, Reason} -> {stop, Reason}
-            end;
-        T when is_integer(T) ->
-            self() ! initiate_connection,
+    case ReconnectSleep =:= no_reconnect of
+        true ->
+            connect_on_init(State);
+        false ->
+            self() ! connect,
             {ok, State}
     end.
 
 handle_call({request, Req}, From, State) ->
     do_request(Req, From, State);
-
 handle_call({pipeline, Pipeline}, From, State) ->
     do_pipeline(Pipeline, From, State);
-
 handle_call(stop, _From, State) ->
     {stop, normal, ok, State};
-
 handle_call(_Request, _From, State) ->
     {reply, unknown_request, State}.
-
 
 handle_cast({request, Req}, State) ->
     case do_request(Req, undefined, State) of
@@ -120,7 +122,6 @@ handle_cast({request, Req}, State) ->
         {noreply, State1} ->
             {noreply, State1}
     end;
-
 handle_cast({request, Req, Pid}, State) ->
     case do_request(Req, Pid, State) of
         {reply, Reply, State1} ->
@@ -129,7 +130,6 @@ handle_cast({request, Req, Pid}, State) ->
         {noreply, State1} ->
             {noreply, State1}
     end;
-
 handle_cast({pipeline, Req}, State) ->
     case do_pipeline(Req, undefined, State) of
         {reply, _Reply, State1} ->
@@ -137,7 +137,6 @@ handle_cast({pipeline, Req}, State) ->
         {noreply, State1} ->
             {noreply, State1}
     end;
-
 handle_cast({pipeline, Req, From}, State) ->
     case do_pipeline(Req, From, State) of
         {reply, Reply, State1} ->
@@ -146,62 +145,26 @@ handle_cast({pipeline, Req, From}, State) ->
         {noreply, State1} ->
             {noreply, State1}
     end;
-
 handle_cast(_Msg, State) ->
     {noreply, State}.
 
-%% Receive data from socket, see handle_response/2. Match `Socket' to
-%% enforce sanity.
 handle_info({Tag, Socket, Bs}, #state{transport_data_tag = Tag, socket = Socket} = State) ->
     ok = set_socket_opts([{active, once}], State),
     {noreply, handle_response(Bs, State)};
-
-handle_info({Tag, Socket, _}, #state{transport_data_tag = Tag, socket = OurSocket} = State)
-  when OurSocket =/= Socket ->
-    %% Ignore data messages when the socket in message doesn't match
-    %% our state. In order to test behavior around receiving
-    %% closure message with clients waiting in queue, we send a
-    %% fake tcp_close message. This allows us to ignore messages that
-    %% arrive after that while we are reconnecting.
-    {noreply, State};
-
-handle_info({Tag, _Socket, _Reason}, #state{transport_error_tag = Tag} = State) ->
-    %% This will be followed by a close
-    {noreply, State};
-
-%% Socket got closed, for example by Redis terminating idle
-%% clients. If desired, spawn of a new process which will try to reconnect and
-%% notify us when Redis is ready. In the meantime, we can respond with
-%% an error message to all our clients.
-handle_info({Tag, _Socket}, #state{transport_closure_tag = Tag} = State) ->
-    maybe_reconnect(Tag, State);
-
-%% Redis is ready to accept requests, the given Socket is a socket
-%% already connected and authenticated.
-handle_info({connection_ready, Socket}, #state{socket = undefined} = State) ->
-    {noreply, State#state{socket = Socket}};
-
-%% eredis can be used in Poolboy, but it requires to support a simple API
-%% that Poolboy uses to manage the connections.
+handle_info({Tag, Socket, Reason}, #state{transport_error_tag = Tag, socket = Socket} = State) ->
+    TransportModule = State#state.transport_module,
+    _ = TransportModule:close(Socket),
+    handle_socket_removal(Reason, State);
+handle_info({Tag, Socket}, #state{transport_closure_tag = Tag, socket = Socket} = State) ->
+    handle_socket_removal(closed, State);
+handle_info(connect, #state{socket = undefined} = State) ->
+    handle_connect(State);
 handle_info(stop, State) ->
     {stop, shutdown, State};
-
-handle_info(initiate_connection, #state{socket = undefined} = State) ->
-    case connect(State) of
-        {ok, NewState} ->
-            {noreply, NewState};
-        {error, Reason} ->
-            maybe_reconnect(Reason, State)
-    end;
-
 handle_info(_Info, State) ->
     {stop, {unhandled_message, _Info}, State}.
 
-terminate(_Reason, State) ->
-    case State#state.socket of
-        undefined -> ok;
-        Socket    -> (State#state.transport_module):close(Socket)
-    end,
+terminate(_Reason, _State) ->
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
@@ -210,6 +173,27 @@ code_change(_OldVsn, State, _Extra) ->
 %%--------------------------------------------------------------------
 %%% Internal functions
 %%--------------------------------------------------------------------
+
+connect_on_init(State) ->
+    case handle_connect(State) of
+        {noreply, NewState} ->
+            {ok, NewState};
+        {stop, {connect, Reason}, _NewState} ->
+            {stop, Reason}
+    end.
+
+handle_connect(State) ->
+    case connect(State) of
+        {ok, NewState} ->
+            {noreply, NewState};
+        {error, Reason} when State#state.reconnect_sleep =:= no_reconnect ->
+            {stop, {connect, Reason}, State};
+        {error, Reason} ->
+            error_logger:error_msg("eredis (~p:~p): ~p",
+                                   [State#state.host, State#state.port, Reason]),
+            erlang:send_after(State#state.reconnect_sleep, self(), connect),
+            {noreply, State}
+    end.
 
 -spec do_request(Req::iolist(), From::undefined | pid(), #state{}) ->
                         {noreply, #state{}} | {reply, Reply::any(), #state{}}.
@@ -344,14 +328,20 @@ connect(State) ->
                         ok ->
                             {ok, NewState};
                         {error, Reason} ->
+                            close_and_flush_socket_messages(NewState),
                             {error, {select_error, Reason}}
                     end;
                 {error, Reason} ->
+                    close_and_flush_socket_messages(NewState),
                     {error, {authentication_error, Reason}}
             end;
         {error, Reason} ->
             {error, {connection_error, Reason}}
     end.
+
+close_and_flush_socket_messages(State) when State#state.socket =/= undefined ->
+    _ = (State#state.transport_module):close(State#state.socket),
+    flush_socket_messages(State).
 
 transport_params(State) when State#state.transport =:= tcp ->
     Host = State#state.host,
@@ -430,56 +420,38 @@ set_socket_opts(Opts, State) ->
             ssl:setopts(State#state.socket, Opts)
     end.
 
-maybe_reconnect(Reason, #state{reconnect_sleep = no_reconnect, queue = Queue} = State) ->
-    reply_all({error, Reason}, Queue),
-    %% If we aren't going to reconnect, then there is nothing else for
-    %% this process to do.
-    {stop, normal, State#state{socket = undefined}};
-maybe_reconnect(Reason, #state{queue = Queue} = State) ->
-    error_logger:error_msg("eredis: Re-establishing connection to ~p:~p due to ~p",
-                           [State#state.host, State#state.port, Reason]),
-    Self = self(),
-    spawn_link(fun() -> reconnect_loop(Self, State) end),
-
-    %% tell all of our clients what has happened.
-    reply_all({error, Reason}, Queue),
-
-    %% Throw away the socket and the queue, as we will never get a
-    %% response to the requests sent on the old socket. The absence of
-    %% a socket is used to signal we are "down"
-    {noreply, State#state{socket = undefined, queue = queue:new()}}.
-
-%% @doc: Loop until a connection can be established, this includes
-%% successfully issuing the auth and select calls. When we have a
-%% connection, give the socket to the redis client.
-reconnect_loop(Client, #state{reconnect_sleep = ReconnectSleep} = State) ->
-    case catch(connect(State)) of
-        {ok, #state{transport_module = TransportModule, socket = Socket}} ->
-            Client ! {connection_ready, Socket},
-            TransportModule:controlling_process(Socket, Client),
-            Msgs = get_all_messages([]),
-            [Client ! M || M <- Msgs];
-        {error, _Reason} ->
-            timer:sleep(ReconnectSleep),
-            reconnect_loop(Client, State);
-        %% Something bad happened when connecting, like Redis might be
-        %% loading the dataset and we got something other than 'OK' in
-        %% auth or select
-        _ ->
-            timer:sleep(ReconnectSleep),
-            reconnect_loop(Client, State)
-    end.
-
 read_database(undefined) ->
     undefined;
 read_database(Database) when is_integer(Database) ->
     list_to_binary(integer_to_list(Database)).
 
+handle_socket_removal(Reason, State) ->
+    reply_all({error, Reason}, State#state.queue),
+    case State#state.reconnect_sleep of
+        no_reconnect ->
+            {stop, normal, State};
+        ReconnectSleep ->
+            flush_socket_messages(State),
+            _ = erlang:send_after(ReconnectSleep, self(), connect),
+            NewState = State#state{ socket = undefined },
+            {noreply, NewState}
+    end.
 
-get_all_messages(Acc) ->
+flush_socket_messages(State) ->
+    flush_socket_messages_recur(
+      State#state.socket,
+      State#state.transport_data_tag,
+      State#state.transport_closure_tag,
+      State#state.transport_error_tag).
+
+flush_socket_messages_recur(Socket, DataTag, ClosureTag, ErrorTag) ->
     receive
-        M ->
-            [M | Acc]
-    after 0 ->
-        lists:reverse(Acc)
+        {DataTag, Socket, _Bytes} ->
+            flush_socket_messages_recur(Socket, DataTag, ClosureTag, ErrorTag);
+        {ClosureTag, Socket} ->
+            flush_socket_messages_recur(Socket, DataTag, ClosureTag, ErrorTag);
+        {ErrorTag, Socket, _Reason} ->
+            flush_socket_messages_recur(Socket, DataTag, ClosureTag, ErrorTag)
+    after
+        0 -> ok
     end.

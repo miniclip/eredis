@@ -13,7 +13,7 @@
         {database, undefined} |
         {password, string()} |
         {reconnect_sleep, reconnect_sleep()} |
-        {connect_timeout, integer()}.
+        {connect_timeout, non_neg_integer()}.
 -type server_args() :: [option()].
 
 -type sub_option() ::

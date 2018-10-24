@@ -206,8 +206,9 @@ tcp_closed_rig(C) ->
     %% the client into thinking the connection to redis has been
     %% closed. This behavior can be observed when Redis closes an idle
     %% connection just as a traffic burst starts.
+    Socket = eredis_client:get_socket(C),
     DoSend = fun(tcp_closed) ->
-                     C ! {tcp_closed, fake_socket};
+                     ok = gen_tcp:close(Socket);
                 (Cmd) ->
                      eredis:q(C, Cmd)
              end,
@@ -217,8 +218,8 @@ tcp_closed_rig(C) ->
             {3, tcp_closed}],
     Pids = [ remote_query(DoSend, M) || M <- Msgs ],
     Results = gather_remote_queries(Pids),
-    ?assertEqual({error, tcp_closed}, proplists:get_value(1, Results)),
-    ?assertEqual({error, tcp_closed}, proplists:get_value(2, Results)).
+    ?assertEqual({error, closed}, proplists:get_value(1, Results)),
+    ?assertEqual({error, closed}, proplists:get_value(2, Results)).
 
 remote_query(Fun, {Id, Cmd}) ->
     Parent = self(),
