@@ -140,7 +140,7 @@ handle_cast({pipeline, Req}, State) ->
 handle_cast({pipeline, Req, From}, State) ->
     case do_pipeline(Req, From, State) of
         {reply, Reply, State1} ->
-            safe_send(From, {response, Reply}),
+            safe_reply(From, Reply),
             {noreply, State1};
         {noreply, State1} ->
             {noreply, State1}
