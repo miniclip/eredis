@@ -149,7 +149,7 @@ handle_cast(_Msg, State) ->
     {noreply, State}.
 
 handle_info({Tag, Socket, Bs}, #state{transport_data_tag = Tag, socket = Socket} = State) ->
-    ok = set_socket_opts([{active, once}], State),
+    _ = set_socket_opts([{active, once}], State),
     {noreply, handle_response(Bs, State)};
 handle_info({Tag, Socket, Reason}, #state{transport_error_tag = Tag, socket = Socket} = State) ->
     TransportModule = State#state.transport_module,
@@ -395,7 +395,7 @@ authenticate(State) ->
 %% @doc: Executes the given command synchronously, expects Redis to
 %% return "+OK\r\n", otherwise it will fail.
 do_sync_command(Command, State) ->
-    ok = set_socket_opts([{active, false}], State),
+    _ = set_socket_opts([{active, false}], State),
     TransportModule = State#state.transport_module,
     Socket = State#state.socket,
     case TransportModule:send(Socket, Command) of
@@ -403,7 +403,7 @@ do_sync_command(Command, State) ->
             %% Hope there's nothing else coming down on the socket..
             case TransportModule:recv(Socket, 0, ?RECV_TIMEOUT) of
                 {ok, <<"+OK\r\n">>} ->
-                    ok = set_socket_opts([{active, once}], State),
+                    _ = set_socket_opts([{active, once}], State),
                     ok;
                 Other ->
                     {error, {unexpected_data, Other}}
