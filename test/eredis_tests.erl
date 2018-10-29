@@ -128,9 +128,9 @@ qp_noreply_test() ->
 q_async_test() ->
     C = c(),
     ?assertEqual({ok, <<"OK">>}, eredis:q(C, ["SET", foo, bar])),
-    ?assertEqual(ok, eredis:q_async(C, ["GET", foo], self())),
+    {await, ReplyTag} = eredis:q_async(C, ["GET", foo], self()),
     receive
-        {response, Msg} ->
+        {ReplyTag, Msg} ->
             ?assertEqual(Msg, {ok, <<"bar">>}),
             ?assertMatch({ok, _}, eredis:q(C, ["DEL", foo]))
     end.
