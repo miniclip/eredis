@@ -5,6 +5,8 @@
 * Changed:
     * asynchronous query replies are now uniquely identified (:q_async)
     * reconnect logic
+* Removed:
+    * unmaintained benchmarking code
 * Fixed:
     * crashes upon socket closure
     * bad dispatching of asynchronous pipeline replies (:qp_async)
