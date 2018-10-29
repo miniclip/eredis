@@ -1,5 +1,14 @@
 # CHANGELOG
 
+## v2.0.0
+
+* Changed:
+    * asynchronous query replies are now uniquely identified (:q_async)
+    * reconnect logic
+* Fixed:
+    * crashes upon socket closure
+    * bad dispatching of asynchronous pipeline replies (:qp_async)
+
 ## v1.3.0
 
 * Added:
