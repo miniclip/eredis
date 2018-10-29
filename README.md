@@ -176,13 +176,6 @@ and database, it will issue the `AUTH` and `SELECT` commands
 appropriately, even when reconnecting after a timeout.
 
 
-## Benchmarking
-
-Using basho_bench(https://github.com/basho/basho_bench/) you may
-benchmark Eredis on your own hardware using the provided config and
-driver. See `priv/basho_bench_driver_eredis.config` and
-`src/basho_bench_driver_eredis.erl`.
-
 ## Queueing
 
 Eredis uses the same queueing mechanism as Erldis. `eredis:q/2` uses
