@@ -3,8 +3,8 @@
 %%
 %% Usage:
 %%   {ok, Client} = eredis:start_link().
-%%   {ok, <<"OK">>} = eredis:q(["SET", "foo", "bar"]).
-%%   {ok, <<"bar">>} = eredis:q(["GET", "foo"]).
+%%   {ok, <<"OK">>} = eredis:q(Client, ["SET", "foo", "bar"]).
+%%   {ok, <<"bar">>} = eredis:q(Client, ["GET", "foo"]).
 
 -module(eredis).
 -include("eredis.hrl").
@@ -97,9 +97,8 @@ qp(Client, Pipeline, Timeout) ->
     pipeline(Client, Pipeline, Timeout).
 
 -spec q_noreply(Client::client(), Command::[any()]) -> ok.
-%% @doc
+%% @doc Executes the command but does not wait for a response and ignores any errors.
 %% @see q/2
-%% Executes the command but does not wait for a response and ignores any errors.
 q_noreply(Client, Command) ->
     cast(Client, Command).
 
