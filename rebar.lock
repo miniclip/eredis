@@ -8,5 +8,5 @@
   0},
  {<<"ssl_verify_fun">>,
   {git,"https://github.com/deadtrickster/ssl_verify_fun.erl.git",
-       {ref,"c5718226b0b9f3d1a38ef6ca3c3b4c75f53dda92"}},
+       {ref,"557713921482bb66eebe77b5b6e6b7d1b67c1e44"}},
   0}].
