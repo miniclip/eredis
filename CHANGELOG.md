@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## UNRELEASED
+
+* Fixed:
+    * warning on rebar3 over ssl_verify_fun's missing .app description
+
 ## v2.0.0
 
 * Changed:
