@@ -1,9 +1,12 @@
 # CHANGELOG
 
-## UNRELEASED
+## v2.0.1
+
+* Added:
+    * exposed eredis:start_link/7 [Ricardo Torres]
 
 * Fixed:
-    * warning on rebar3 over ssl_verify_fun's missing .app description
+    * warning on rebar3 over ssl_verify_fun's missing .app description [Paulo Oliveira]
 
 ## v2.0.0
 
