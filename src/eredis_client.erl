@@ -67,8 +67,15 @@
                  ConnectTimeout::non_neg_integer() | undefined) ->
                         {ok, Pid::pid()} | {error, Reason::term()}.
 start_link(Transport, Host, Port, Database, Password, ReconnectSleep, ConnectTimeout) ->
-    gen_server:start_link(?MODULE, [Transport, Host, Port, Database, Password,
-                                    ReconnectSleep, ConnectTimeout], []).
+    case
+        gen_server:start_link(?MODULE, [Transport, Host, Port, Database, Password,
+                                        ReconnectSleep, ConnectTimeout], [])
+    of
+        {ok, _} = Success ->
+            Success;
+        {error, {shutdown, Reason}} ->
+            {error, Reason}
+    end.
 
 stop(Pid) ->
     gen_server:call(Pid, stop).
@@ -179,7 +186,7 @@ connect_on_init(State) ->
         {noreply, NewState} ->
             {ok, NewState};
         {stop, {connect, Reason}, _NewState} ->
-            {stop, Reason}
+            {stop, {shutdown, Reason}}
     end.
 
 handle_connect(State) ->
