@@ -3,7 +3,9 @@
 ## [Unreleased]
 
 * Fixed:
-    * crash log spam when connections are configued to connect on `init/1` and fail
+    * crash log spam when connections are configued to connect on `init/1` and fail [Guilherme Andrade]
+    * unwarranted dispatch of 'EXIT' to caller upon connection voluntarily stopping on `init/1`
+      [Guilherme Andrade]
 
 ## v2.0.1
 

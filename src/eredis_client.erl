@@ -27,6 +27,9 @@
 %% API
 -export([start_link/7, stop/1]).
 
+%% proc_lib callbacks
+-export([init/2]). -ignore_xref([init/2]).
+
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
@@ -67,15 +70,8 @@
                  ConnectTimeout::non_neg_integer() | undefined) ->
                         {ok, Pid::pid()} | {error, Reason::term()}.
 start_link(Transport, Host, Port, Database, Password, ReconnectSleep, ConnectTimeout) ->
-    case
-        gen_server:start_link(?MODULE, [Transport, Host, Port, Database, Password,
-                                        ReconnectSleep, ConnectTimeout], [])
-    of
-        {ok, _} = Success ->
-            Success;
-        {error, {shutdown, Reason}} ->
-            {error, Reason}
-    end.
+    Args = [Transport, Host, Port, Database, Password, ReconnectSleep, ConnectTimeout],
+    proc_lib:start_link(?MODULE, init, [self(), Args]).
 
 stop(Pid) ->
     gen_server:call(Pid, stop).
@@ -87,10 +83,10 @@ get_socket(Pid) ->
 -endif.
 
 %%====================================================================
-%% gen_server callbacks
+%% proc_lib callbacks
 %%====================================================================
 
-init([Transport, Host, Port, Database, Password, ReconnectSleep, ConnectTimeout])
+init(ParentPid, [Transport, Host, Port, Database, Password, ReconnectSleep, ConnectTimeout])
   when Transport =:= tcp;
        (Transport =:= ssl andalso is_list(Host)) % UNIX socket hosts not supported with ssl
        ->
@@ -107,11 +103,19 @@ init([Transport, Host, Port, Database, Password, ReconnectSleep, ConnectTimeout]
 
     case ReconnectSleep =:= no_reconnect of
         true ->
-            connect_on_init(State);
+            connect_on_init(ParentPid,State);
         false ->
+            proc_lib:init_ack(ParentPid, {ok, self()}),
             self() ! connect,
-            {ok, State}
+            gen_server:enter_loop(?MODULE, [], State)
     end.
+
+%%====================================================================
+%% gen_server callbacks
+%%====================================================================
+
+init(_) ->
+    ignore.
 
 handle_call({request, Req}, From, State) ->
     do_request(Req, From, State);
@@ -181,12 +185,15 @@ code_change(_OldVsn, State, _Extra) ->
 %%% Internal functions
 %%--------------------------------------------------------------------
 
-connect_on_init(State) ->
+connect_on_init(ParentPid, State) ->
     case handle_connect(State) of
         {noreply, NewState} ->
-            {ok, NewState};
+            proc_lib:init_ack(ParentPid, {ok, self()}),
+            gen_server:enter_loop(?MODULE, [], NewState);
         {stop, {connect, Reason}, _NewState} ->
-            {stop, {shutdown, Reason}}
+            proc_lib:init_ack(ParentPid, {error, Reason}),
+            unlink(ParentPid),
+            exit(normal)
     end.
 
 handle_connect(State) ->
