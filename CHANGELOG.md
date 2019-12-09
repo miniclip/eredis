@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## v2.1.0
+## v2.0.2
 
 * Fixed:
     * crash log spam when connections are configued to connect on `init/1` and fail [Guilherme Andrade]
