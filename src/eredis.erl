@@ -27,6 +27,9 @@
 %% Exported for testing
 -export([create_multibulk/1]).
 
+-export_type([transport/0]).
+-export_type([return_value/0]).
+
 %% Type of gen_server process id
 -type client() :: pid() |
                   atom() |

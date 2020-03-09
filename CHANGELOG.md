@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## Unreleased
+
+* Added:
+    * exported types (as to avoid importing the `.hrl`) [Paulo Oliveira]
+
 ## v2.0.2
 
 * Fixed:
