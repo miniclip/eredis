@@ -5,6 +5,9 @@
 * Added:
     * exported types (as to avoid importing the `.hrl`) [Paulo Oliveira]
 
+* Changed:
+    * CA bundles, to base them on the latest Mozilla Included CA Certificate List [Paulo Oliveira]
+
 ## v2.0.2
 
 * Fixed:

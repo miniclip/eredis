@@ -1,6 +1,6 @@
 [{<<"certifi">>,
   {git,"https://github.com/certifi/erlang-certifi.git",
-       {ref,"4ad4051fd3f1d6ae8f9c4fe5eb3fb4f1cd66363e"}},
+       {ref,"549670ddfe96727a703a295c75c423d8a2c50718"}},
   0},
  {<<"parse_trans">>,
   {git,"https://github.com/uwiger/parse_trans.git",
