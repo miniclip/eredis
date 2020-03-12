@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## v2.1.0
 
 * Added:
     * exported types (as to avoid importing the `.hrl`) [Paulo Oliveira]
