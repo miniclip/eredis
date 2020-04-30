@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v2.2.0
+
+* Removed:
+    * support for OTP 18 [Guilherme Andrade]
+
 ## v2.1.0
 
 * Added:
