@@ -2,6 +2,9 @@
 
 ## v2.2.0
 
+* Changed:
+    * source of dependencies to Hex, for quicker builds [Guilherme Andrade]
+
 * Removed:
     * support for OTP 18 [Guilherme Andrade]
 
