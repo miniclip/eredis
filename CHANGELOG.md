@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## [Unreleased]
+
+* Added:
+    * compatibility with OTP 23
+
 ## v2.2.0
 
 * Changed:
