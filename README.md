@@ -1,6 +1,6 @@
 # eredis
 
-[![](https://travis-ci.org/MiniclipPortugal/eredis.png?branch=master)](https://travis-ci.org/MiniclipPortugal/eredis)
+[![](https://travis-ci.com/MiniclipPortugal/eredis.png?branch=master)](https://travis-ci.com/MiniclipPortugal/eredis)
 
 Non-blocking Redis client with focus on performance and robustness.
 
