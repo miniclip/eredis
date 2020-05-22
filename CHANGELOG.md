@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## v2.3.0
+
+* Added:
+    * compatibility with OTP 23 [Guilherme Andrade]
+
 ## v2.2.0
 
 * Changed:

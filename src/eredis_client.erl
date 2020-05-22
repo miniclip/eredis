@@ -370,7 +370,7 @@ transport_params(State) when State#state.transport =:= tcp ->
 transport_params(State) when State#state.transport =:= ssl ->
     Host = State#state.host,
     Port = State#state.port,
-    ConnectOpts = eredis_security:secure_ssl_opts(Host, ?SSL_SOCKET_OPTS),
+    ConnectOpts = ?SSL_SOCKET_OPTS ++ tls_certificate_check:options(Host),
     {ssl, Host, Port, ConnectOpts,
      ssl, ssl_closed, ssl_error}.
 
