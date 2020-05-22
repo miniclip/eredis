@@ -3,7 +3,7 @@
 ## [Unreleased]
 
 * Added:
-    * compatibility with OTP 23
+    * compatibility with OTP 23 [Guilherme Andrade]
 
 ## v2.2.0
 
