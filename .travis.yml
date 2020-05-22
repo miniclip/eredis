@@ -19,3 +19,4 @@ otp_release:
   - 23.0
 services:
   - redis-server
+script: make check test
