@@ -1,5 +1,7 @@
 # eredis
 
+[![](https://travis-ci.org/MiniclipPortugal/eredis.png?branch=master)](https://travis-ci.org/MiniclipPortugal/eredis)
+
 Non-blocking Redis client with focus on performance and robustness.
 
 Supported Redis features:
