@@ -1,5 +1,11 @@
 # eredis
 
+[![](https://travis-ci.com/MiniclipPortugal/eredis.png?branch=master)](https://travis-ci.com/MiniclipPortugal/eredis)
+[![Erlang][erlang badge]][erlang downloads]
+
+[erlang badge]: https://img.shields.io/badge/erlang-%3E%3D19.0-lightgrey
+[erlang downloads]: http://www.erlang.org/download
+
 Non-blocking Redis client with focus on performance and robustness.
 
 Supported Redis features:
