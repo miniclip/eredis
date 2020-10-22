@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Unreleased
+## v2.3.1
 
 * Added:
     * Travis CI icon, to help increase consumer confidence [Paulo Oliveira]
