@@ -1,6 +1,6 @@
 # eredis
 
-[![](https://travis-ci.com/MiniclipPortugal/eredis.png?branch=master)](https://travis-ci.com/MiniclipPortugal/eredis)
+[![](https://travis-ci.com/miniclip/eredis.png?branch=master)](https://travis-ci.com/miniclip/eredis)
 [![Erlang][erlang badge]][erlang downloads]
 
 [erlang badge]: https://img.shields.io/badge/erlang-%3E%3D19.0-lightgrey
