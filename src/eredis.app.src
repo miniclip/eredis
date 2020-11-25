@@ -1,6 +1,6 @@
 {application,eredis,
              [{description,"Erlang Redis Client"},
-              {vsn,"1.2.0"},
+              {vsn,git},
               {modules,[eredis,eredis_client,eredis_parser,eredis_sub,
                         eredis_sub_client]},
               {registered,[]},
