@@ -1,37 +1,41 @@
 # eredis
 
-[![](https://travis-ci.com/miniclip/eredis.png?branch=master)](https://travis-ci.com/miniclip/eredis)
-[![Erlang][erlang badge]][erlang downloads]
+![CI for eredis](https://github.com/miniclip/eredis/workflows/CI%20for%20eredis/badge.svg)
+[![erlang][erlang badge]][erlang downloads]
 
-[erlang badge]: https://img.shields.io/badge/erlang-%3E%3D19.0-lightgrey
+[erlang badge]: https://img.shields.io/badge/erlang-%3E%3D19.3-lightgrey
 [erlang downloads]: http://www.erlang.org/download
 
 Non-blocking Redis client with focus on performance and robustness.
 
 Supported Redis features:
 
- * Any command, through eredis:q/2
- * Transactions
- * Pipelining
- * Authentication & multiple dbs
- * Pubsub
+- Any command, through eredis:q/2
+- Transactions
+- Pipelining
+- Authentication & multiple dbs
+- Pubsub
 
 ## Example
 
 If you have Redis running on localhost, with default settings, you may
 copy and paste the following into a shell to try out Eredis:
 
-    git clone git://github.com/wooga/eredis.git
-    cd eredis
-    ./rebar compile
-    erl -pa ebin/
-    {ok, C} = eredis:start_link().
-    {ok, <<"OK">>} = eredis:q(C, ["SET", "foo", "bar"]).
-    {ok, <<"bar">>} = eredis:q(C, ["GET", "foo"]).
+```bash
+git clone git://github.com/wooga/eredis.git
+cd eredis
+./rebar compile
+erl -pa ebin/
+{ok, C} = eredis:start_link().
+{ok, <<"OK">>} = eredis:q(C, ["SET", "foo", "bar"]).
+{ok, <<"bar">>} = eredis:q(C, ["GET", "foo"]).
+```
 
 To connect to a Redis instance listening on a Unix domain socket:
 
-    {ok, C1} = eredis:start_link({local, "/var/run/redis.sock"}, 0).
+```erlang
+{ok, C1} = eredis:start_link({local, "/var/run/redis.sock"}, 0).
+```
 
 MSET and MGET:
 
@@ -44,7 +48,8 @@ KeyValuePairs = ["key1", "value1", "key2", "value2", "key3", "value3"].
 HASH
 
 ```erlang
-HashObj = ["id", "objectId", "message", "message", "receiver", "receiver", "status", "read"].
+HashObj = ["id", "objectId", "message", "message", "receiver", "receiver",
+           "status", "read"].
 eredis:q(C, ["HMSET", "key" | HashObj]).
 {ok, Values} = eredis:q(C, ["HGETALL", "key"]).
 ```
@@ -103,7 +108,6 @@ EUnit tests:
 ./rebar eunit
 ```
 
-
 ## Commands
 
 Eredis has one main function to interact with redis, which is
@@ -124,11 +128,12 @@ To start the client, use any of the `eredis:start_link/0,1,2,3,4,5`
 functions. They all include sensible defaults. `start_link/5` takes
 the following arguments:
 
-* Host, dns name or ip adress as string; or unix domain socket as {local, Path} (available in OTP 19+)
-* Port, integer, default is 6379
-* Database, integer or 0 for default database
-* Password, string or empty string([]) for no password
-* Reconnect sleep, integer of milliseconds to sleep between reconnect attempts
+- Host, dns name or ip adress as string; or unix domain socket as {local,
+Path} (available in OTP 19+)
+- Port, integer, default is 6379
+- Database, integer or 0 for default database
+- Password, string or empty string([]) for no password
+- Reconnect sleep, integer of milliseconds to sleep between reconnect attempts
 
 ## Reconnecting on Redis down / network failure / timeout / etc
 
@@ -180,7 +185,6 @@ Eredis also implements the AUTH and SELECT calls for you. When the
 client is started with something else than default values for password
 and database, it will issue the `AUTH` and `SELECT` commands
 appropriately, even when reconnecting after a timeout.
-
 
 ## Queueing
 
