@@ -31,6 +31,7 @@
 -export_type([transport/0]).
 
 -type reconnect_sleep() :: no_reconnect | integer().
+-export_type([reconnect_sleep/0]).
 
 -type option() ::
         {transport, transport()} |
@@ -42,13 +43,10 @@
         {password, string()} |
         {reconnect_sleep, reconnect_sleep()} |
         {connect_timeout, non_neg_integer()}.
--type server_args() :: [option()].
+-export_type([option/0]).
 
--type sub_option() ::
-        option() |
-        {max_queue_size, non_neg_integer() | infinity} |
-        {queue_behaviour, drop | exit}.
--type sub_args() :: [sub_option()].
+-type server_args() :: [option()].
+-export_type([server_args/0]).
 
 -type return_value() :: undefined | binary() | [binary() | nonempty_list()].
 -export_type([return_value/0]).
@@ -56,15 +54,8 @@
 -type pipeline() :: [iolist()].
 -export_type([pipeline/0]).
 
--type channel() :: binary().
-
-%% Continuation data is whatever data returned by any of the parse
-%% functions. This is used to continue where we left off the next time
-%% the user calls parse/2.
--type continuation_data() :: any().
--type parser_state() :: status_continue | bulk_continue | multibulk_continue.
-
--type eredis_queue() :: queue:queue().
+-export_type([continuation_data/0]). % from eredis.hrl
+-export_type([parser_state/0]). % from eredis.hrl
 
 %% Type of gen_server process id
 -type client() :: pid() |

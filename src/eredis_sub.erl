@@ -18,6 +18,21 @@
 -define(DEFAULT_MAX_QUEUE_SIZE, infinity).
 -define(DEFAULT_QUEUE_BEHAVIOUR, drop).
 
+-type sub_option() ::
+        eredis:option() |
+        {max_queue_size, non_neg_integer() | infinity} |
+        {queue_behaviour, drop | exit}.
+-export_type([sub_option/0]).
+
+-type sub_args() :: [sub_option()].
+-export_type([sub_args/0]).
+
+-type channel() :: binary().
+-export_type([channel/0]).
+
+-type eredis_queue() :: queue:queue().
+-export_type([eredis_queue/0]).
+
 %%
 %% PUBLIC API
 %%

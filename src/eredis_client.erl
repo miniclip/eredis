@@ -40,12 +40,12 @@
 -endif.
 
 -record(state, {
-          transport :: transport(),
+          transport :: eredis:transport(),
           host :: string() | {local,term()} | undefined,
           port :: integer() | undefined,
           password :: binary() | undefined,
           database :: binary() | undefined,
-          reconnect_sleep :: reconnect_sleep() | undefined,
+          reconnect_sleep :: eredis:reconnect_sleep() | undefined,
           connect_timeout :: non_neg_integer() | undefined,
 
           transport_module :: module() | undefined,
@@ -55,19 +55,19 @@
           transport_error_tag :: atom(),
 
           parser_state :: #pstate{} | undefined,
-          queue :: eredis_queue() | undefined
+          queue :: eredis_sub:eredis_queue() | undefined
 }).
 
 %%
 %% API
 %%
 
--spec start_link(Transport::transport(),
+-spec start_link(Transport::eredis:transport(),
                  Host::list(),
                  Port::integer(),
                  Database::integer() | undefined,
                  Password::string(),
-                 ReconnectSleep::reconnect_sleep(),
+                 ReconnectSleep::eredis:reconnect_sleep(),
                  ConnectTimeout::non_neg_integer() | undefined) ->
                         {ok, Pid::pid()} | {error, Reason::term()}.
 start_link(Transport, Host, Port, Database, Password, ReconnectSleep, ConnectTimeout) ->
@@ -226,7 +226,7 @@ do_request(Req, From, State) ->
             {reply, {error, Reason}, State}
     end.
 
--spec do_pipeline(Pipeline::pipeline(), From::undefined | pid() | {pid(),reference()}, #state{}) ->
+-spec do_pipeline(Pipeline::eredis:pipeline(), From::undefined | pid() | {pid(),reference()}, #state{}) ->
                          {noreply, #state{}} | {reply, Reply::any(), #state{}}.
 %% @doc: Sends the entire pipeline to redis. If we do not have a
 %% connection, returns error.

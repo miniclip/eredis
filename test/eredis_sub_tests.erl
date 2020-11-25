@@ -2,7 +2,6 @@
 
 -include_lib("eunit/include/eunit.hrl").
 -include("eredis.hrl").
--include("eredis_sub.hrl").
 
 -import(eredis, [create_multibulk/1]).
 
