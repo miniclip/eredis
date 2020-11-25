@@ -27,8 +27,44 @@
 %% Exported for testing
 -export([create_multibulk/1]).
 
+-type transport() :: tcp | ssl.
 -export_type([transport/0]).
+
+-type reconnect_sleep() :: no_reconnect | integer().
+
+-type option() ::
+        {transport, transport()} |
+        {host, string()} |
+        {host, {local, term()}} |
+        {port, integer()} |
+        {database, string()} |
+        {database, undefined} |
+        {password, string()} |
+        {reconnect_sleep, reconnect_sleep()} |
+        {connect_timeout, non_neg_integer()}.
+-type server_args() :: [option()].
+
+-type sub_option() ::
+        option() |
+        {max_queue_size, non_neg_integer() | infinity} |
+        {queue_behaviour, drop | exit}.
+-type sub_args() :: [sub_option()].
+
+-type return_value() :: undefined | binary() | [binary() | nonempty_list()].
 -export_type([return_value/0]).
+
+-type pipeline() :: [iolist()].
+-export_type([pipeline/0]).
+
+-type channel() :: binary().
+
+%% Continuation data is whatever data returned by any of the parse
+%% functions. This is used to continue where we left off the next time
+%% the user calls parse/2.
+-type continuation_data() :: any().
+-type parser_state() :: status_continue | bulk_continue | multibulk_continue.
+
+-type eredis_queue() :: queue:queue().
 
 %% Type of gen_server process id
 -type client() :: pid() |
@@ -36,6 +72,7 @@
                   {atom(),atom()} |
                   {global,term()} |
                   {via,atom(),term()}.
+-export_type([client/0]).
 
 %%
 %% PUBLIC API
