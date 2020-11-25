@@ -86,15 +86,15 @@ received {message,<<"foo">>,<<"bar">>,<0.34.0>}
 ```
 
 Pattern Subscribe:
-    
+
 ```erl
-1> eredis_sub:psub_example(). 
+1> eredis_sub:psub_example().
 received {subscribed,<<"foo*">>,<0.33.0>}
 {<0.33.0>,<0.36.0>}
 2> eredis_sub:ppub_example().
 received {pmessage,<<"foo*">>,<<"foo123">>,<<"bar">>,<0.33.0>}
 ok
-3> 
+3>
 ```
 
 EUnit tests:
