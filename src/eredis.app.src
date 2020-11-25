@@ -5,5 +5,4 @@
                         eredis_sub_client]},
               {registered,[]},
               {applications,[kernel,stdlib,ssl,tls_certificate_check]},
-              {maintainers,["Knut Nesheim"]},
               {licenses,["MIT"]}]}.
