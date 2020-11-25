@@ -1,3 +1,4 @@
+%% @hidden
 %%
 %% eredis_pubsub_client
 %%

@@ -174,6 +174,7 @@ receiver(Sub) ->
             ?MODULE:receiver(Sub)
     end.
 
+%% @private
 sub_example() ->
     {ok, Sub} = start_link(),
     Receiver = spawn_link(fun () ->
@@ -183,6 +184,7 @@ sub_example() ->
                           end),
     {Sub, Receiver}.
 
+%% @private
 psub_example() ->
     {ok, Sub} = start_link(),
     Receiver = spawn_link(fun () ->
@@ -192,11 +194,13 @@ psub_example() ->
                           end),
     {Sub, Receiver}.
 
+%% @private
 pub_example() ->
     {ok, P} = eredis:start_link(),
     {ok, <<_/binary>>} = eredis:q(P, ["PUBLISH", "foo", "bar"]),
     eredis_client:stop(P).
 
+%% @private
 ppub_example() ->
     {ok, P} = eredis:start_link(),
     {ok, <<_/binary>>} = eredis:q(P, ["PUBLISH", "foo123", "bar"]),
