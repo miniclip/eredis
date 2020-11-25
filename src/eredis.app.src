@@ -1,8 +1,6 @@
 {application,eredis,
              [{description,"Erlang Redis Client"},
               {vsn,git},
-              {modules,[eredis,eredis_client,eredis_parser,eredis_sub,
-                        eredis_sub_client]},
               {registered,[]},
               {applications,[kernel,stdlib,ssl,tls_certificate_check]},
               {licenses,["MIT"]}]}.
