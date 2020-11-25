@@ -198,7 +198,7 @@ q_async(Client, Command) ->
 
 -spec q_async(Client::client(), Command::[any()], Pid::pid()|atom()) -> {await, Tag::reference()}.
 %% @doc Executes the command, and sends a message to `Pid' with the response (with either or success).
-%% @see 1_async/2
+%% @see q_async/2
 q_async(Client, Command, Pid) when is_pid(Pid) ->
     Tag = make_ref(),
     From = {Pid, Tag},
