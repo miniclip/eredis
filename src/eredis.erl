@@ -69,7 +69,7 @@
 -type return_value() :: undefined | binary() | [binary() | nonempty_list()].
 -export_type([return_value/0]).
 
--type pipeline() :: [iolist()].
+-type pipeline() :: [[term()]].
 -export_type([pipeline/0]).
 
 -export_type([continuation_data/0]). % from eredis.hrl

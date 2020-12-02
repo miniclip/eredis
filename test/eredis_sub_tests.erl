@@ -3,8 +3,6 @@
 -include_lib("eunit/include/eunit.hrl").
 -include("eredis.hrl").
 
--import(eredis, [create_multibulk/1]).
-
 c() ->
     Res = eredis:start_link(),
     ?assertMatch({ok, _}, Res),
@@ -76,17 +74,17 @@ pubsub_manage_subscribers_test() ->
     add_channels(Sub, [<<"chan">>]),
     unlink(Sub),
     Self = self(),
-    ?assertMatch(#state{controlling_process={_, Self}}, get_state(Sub)),
+    ?assert(eredis_sub_client:get_controlling_process(get_state(Sub)) =:= Self),
     S1 = subscriber(Sub),
     ok = eredis_sub:controlling_process(Sub, S1),
-    #state{controlling_process={_, S1}} = get_state(Sub),
+    S1 = eredis_sub_client:get_controlling_process(get_state(Sub)),
     S2 = subscriber(Sub),
     ok = eredis_sub:controlling_process(Sub, S2),
-    #state{controlling_process={_, S2}} = get_state(Sub),
-    eredis:q(Pub, ["PUBLISH", chan, msg1]),
+    S2 = eredis_sub_client:get_controlling_process(get_state(Sub)),
+    _ = eredis:q(Pub, ["PUBLISH", chan, msg1]),
     S1 ! stop,
     ok = wait_for_stop(S1),
-    eredis:q(Pub, ["PUBLISH", chan, msg2]),
+    _ = eredis:q(Pub, ["PUBLISH", chan, msg2]),
     ?assertEqual({message, <<"chan">>, <<"msg1">>, Sub}, wait_for_msg(S2)),
     ?assertEqual({message, <<"chan">>, <<"msg2">>, Sub}, wait_for_msg(S2)),
     S2 ! stop,
@@ -101,9 +99,9 @@ pubsub_connect_disconnect_messages_test() ->
     add_channels(Sub, [<<"chan">>]),
     S = subscriber(Sub),
     ok = eredis_sub:controlling_process(Sub, S),
-    eredis:q(Pub, ["PUBLISH", chan, msg]),
+    _ = eredis:q(Pub, ["PUBLISH", chan, msg]),
     wait_for_msg(S),
-    #state{socket=Sock} = get_state(Sub),
+    Sock = eredis_sub_client:get_socket(get_state(Sub)),
     gen_tcp:close(Sock),
     Sub ! {tcp_closed, Sock},
     ?assertEqual({eredis_disconnected, Sub}, wait_for_msg(S)),
@@ -119,7 +117,7 @@ drop_queue_test() ->
     add_channels(Sub, [<<"foo">>]),
     ok = eredis_sub:controlling_process(Sub),
 
-    [eredis:q(Pub, [publish, foo, N]) || N <- lists:seq(1, 12)],
+    _ = [eredis:q(Pub, [publish, foo, N]) || N <- lists:seq(1, 12)],
 
     receive M1 -> ?assertEqual({message,<<"foo">>,<<"1">>, Sub}, M1) end,
     receive M2 -> ?assertEqual({dropped, 11}, M2) end,
@@ -135,7 +133,7 @@ crash_queue_test() ->
     ok = eredis_sub:controlling_process(Sub),
     Ref = erlang:monitor(process, Sub),
 
-    [eredis:q(Pub, [publish, foo, N]) || N <- lists:seq(1, 12)],
+    _ = [eredis:q(Pub, [publish, foo, N]) || N <- lists:seq(1, 12)],
 
     receive M1 -> ?assertEqual({message,<<"foo">>,<<"1">>, Sub}, M1) end,
     receive M2 -> ?assertEqual({'DOWN', Ref, process, Sub, max_queue_size}, M2) end.
@@ -147,7 +145,7 @@ dynamic_channels_test() ->
     Sub = s(),
     ok = eredis_sub:controlling_process(Sub),
 
-    eredis:q(Pub, [publish, newchan, foo]),
+    _ = eredis:q(Pub, [publish, newchan, foo]),
 
     receive {message, <<"foo">>, _, _} -> ?assert(false)
     after 5 -> ok end,
@@ -167,9 +165,9 @@ dynamic_channels_test() ->
         ?assertEqual(2, length(Channels))
     end, lists:seq(0, 1)),
 
-    eredis:q(Pub, [publish, newchan, foo]),
+    _ = eredis:q(Pub, [publish, newchan, foo]),
     ?assertEqual([{message, <<"newchan">>, <<"foo">>, Sub}], recv_all(Sub)),
-    eredis:q(Pub, [publish, otherchan, foo]),
+    _ = eredis:q(Pub, [publish, otherchan, foo]),
     ?assertEqual([{message, <<"otherchan">>, <<"foo">>, Sub}], recv_all(Sub)),
 
     eredis_sub:unsubscribe(Sub, [<<"otherchan">>]),
