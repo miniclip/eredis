@@ -80,7 +80,6 @@ start_link(Transport, Host, Port, Password, ReconnectSleep, MaxQueueSize, QueueB
     Args = [Transport, Host, Port, Password, ReconnectSleep, MaxQueueSize, QueueBehaviour],
     gen_server:start_link(?MODULE, Args, []).
 
-
 stop(Pid) ->
     gen_server:call(Pid, stop).
 
@@ -118,17 +117,12 @@ handle_call({controlling_process, Pid}, _From, State) ->
     end,
     Ref = erlang:monitor(process, Pid),
     {reply, ok, State#state{controlling_process={Ref, Pid}, msg_state = ready}};
-
 handle_call(get_channels, _From, State) ->
     {reply, {ok, State#state.channels}, State};
-
-
 handle_call(stop, _From, State) ->
     {stop, normal, ok, State};
-
 handle_call(_Request, _From, State) ->
     {reply, unknown_request, State}.
-
 
 %% Controlling process acks, but we have no connection. When the
 %% connection comes back up, we should be ready to forward a message
@@ -136,7 +130,6 @@ handle_call(_Request, _From, State) ->
 handle_cast({ack_message, Pid},
             #state{controlling_process={_, Pid}, socket = undefined} = State) ->
     {noreply, State#state{msg_state = ready}};
-
 %% Controlling process acknowledges receipt of previous message. Send
 %% the next if there is any messages queued or ask for more on the
 %% socket.
@@ -150,44 +143,30 @@ handle_cast({ack_message, Pid},
                        State#state{msg_queue = Queue, msg_state = need_ack}
                end,
     {noreply, NewState};
-
 handle_cast({subscribe, Pid, Channels}, #state{controlling_process = {_, Pid}} = State) ->
     Command = eredis:create_multibulk(["SUBSCRIBE" | Channels]),
     ok = (State#state.transport_module):send(State#state.socket, Command),
     NewChannels = add_channels(Channels, State#state.channels),
     {noreply, State#state{channels = NewChannels}};
-
-
 handle_cast({psubscribe, Pid, Channels}, #state{controlling_process = {_, Pid}} = State) ->
     Command = eredis:create_multibulk(["PSUBSCRIBE" | Channels]),
     ok = (State#state.transport_module):send(State#state.socket, Command),
     NewChannels = add_channels(Channels, State#state.channels),
     {noreply, State#state{channels = NewChannels}};
-
-
-
 handle_cast({unsubscribe, Pid, Channels}, #state{controlling_process = {_, Pid}} = State) ->
     Command = eredis:create_multibulk(["UNSUBSCRIBE" | Channels]),
     ok = (State#state.transport_module):send(State#state.socket, Command),
     NewChannels = remove_channels(Channels, State#state.channels),
     {noreply, State#state{channels = NewChannels}};
-
-
-
 handle_cast({punsubscribe, Pid, Channels}, #state{controlling_process = {_, Pid}} = State) ->
     Command = eredis:create_multibulk(["PUNSUBSCRIBE" | Channels]),
     ok = (State#state.transport_module):send(State#state.socket, Command),
     NewChannels = remove_channels(Channels, State#state.channels),
     {noreply, State#state{channels = NewChannels}};
-
-
-
 handle_cast({ack_message, _}, State) ->
     {noreply, State};
-
 handle_cast(_Msg, State) ->
     {noreply, State}.
-
 
 %% Receive data from socket, see handle_response/2
 handle_info({Tag, _Socket, Bs}, #state{transport_data_tag = Tag} = State) ->
@@ -207,11 +186,9 @@ handle_info({Tag, _Socket, Bs}, #state{transport_data_tag = Tag} = State) ->
         false ->
             {noreply, NewState}
     end;
-
 handle_info({Tag, _Socket, _Reason}, #state{transport_error_tag = Tag} = State) ->
     %% This will be followed by a close
     {noreply, State};
-
 %% Socket got closed, for example by Redis terminating idle
 %% clients. If desired, spawn of a new process which will try to reconnect and
 %% notify us when Redis is ready. In the meantime, we can respond with
@@ -219,7 +196,6 @@ handle_info({Tag, _Socket, _Reason}, #state{transport_error_tag = Tag} = State) 
 handle_info({Tag, _Socket}, #state{transport_closure_tag = Tag, reconnect_sleep = no_reconnect} = State) ->
     %% If we aren't going to reconnect, then there is nothing else for this process to do.
     {stop, normal, State#state{socket = undefined}};
-
 handle_info({Tag, _Socket}, #state{transport_closure_tag = Tag} = State) ->
     Self = self(),
     send_to_controller({eredis_disconnected, Self}, State),
@@ -228,18 +204,15 @@ handle_info({Tag, _Socket}, #state{transport_closure_tag = Tag} = State) ->
     %% Throw away the socket. The absence of a socket is used to
     %% signal we are "down"; discard possibly patrially parsed data
     {noreply, State#state{socket = undefined, parser_state = eredis_parser:init()}};
-
 %% Controller might want to be notified about every reconnect attempt
 handle_info(reconnect_attempt, State) ->
     send_to_controller({eredis_reconnect_attempt, self()}, State),
     {noreply, State};
-
 %% Controller might want to be notified about every reconnect failure and reason
 handle_info({reconnect_failed, Reason}, State) ->
     send_to_controller({eredis_reconnect_failed, self(),
                         {error, {connection_error, Reason}}}, State),
     {noreply, State};
-
 %% Redis is ready to accept requests, the given Socket is a socket
 %% already connected and authenticated.
 handle_info({connection_ready, Socket}, #state{socket = undefined} = State) ->
@@ -247,20 +220,16 @@ handle_info({connection_ready, Socket}, #state{socket = undefined} = State) ->
     NewState = State#state{socket = Socket},
     ok = set_socket_opts([{active, once}], NewState),
     {noreply, NewState};
-
-
 %% Our controlling process is down.
 handle_info({'DOWN', Ref, process, Pid, _Reason},
             #state{controlling_process={Ref, Pid}} = State) ->
     {stop, shutdown, State#state{controlling_process=undefined,
                                  msg_state=ready,
                                  msg_queue=queue:new()}};
-
 %% eredis can be used in Poolboy, but it requires to support a simple API
 %% that Poolboy uses to manage the connections.
 handle_info(stop, State) ->
     {stop, shutdown, State};
-
 handle_info(_Info, State) ->
     {stop, {unhandled_message, _Info}, State}.
 
@@ -309,12 +278,10 @@ handle_response(Data, #state{parser_state = ParserState} = State) ->
         {ReturnCode, Value, NewParserState} ->
             reply({ReturnCode, Value},
                   State#state{parser_state=NewParserState});
-
         {ReturnCode, Value, Rest, NewParserState} ->
             NewState = reply({ReturnCode, Value},
                              State#state{parser_state=NewParserState}),
             handle_response(Rest, NewState);
-
         {continue, NewParserState} ->
             State#state{parser_state = NewParserState}
     end.
@@ -324,28 +291,18 @@ handle_response(Data, #state{parser_state = ParserState} = State) ->
 %% for later delivery.
 reply({ok, [<<"message">>, Channel, Message]}, State) ->
     queue_or_send({message, Channel, Message, self()}, State);
-
 reply({ok, [<<"pmessage">>, Pattern, Channel, Message]}, State) ->
     queue_or_send({pmessage, Pattern, Channel, Message, self()}, State);
-
-
-
 reply({ok, [<<"subscribe">>, Channel, _]}, State) ->
     queue_or_send({subscribed, Channel, self()}, State);
-
 reply({ok, [<<"psubscribe">>, Channel, _]}, State) ->
     queue_or_send({subscribed, Channel, self()}, State);
-
-
 reply({ok, [<<"unsubscribe">>, Channel, _]}, State) ->
     queue_or_send({unsubscribed, Channel, self()}, State);
-
-
 reply({ok, [<<"punsubscribe">>, Channel, _]}, State) ->
     queue_or_send({unsubscribed, Channel, self()}, State);
 reply({ReturnCode, Value}, State) ->
     throw({unexpected_response_from_redis, ReturnCode, Value, State}).
-
 
 queue_or_send(Msg, State) ->
     case State#state.msg_state of
@@ -356,7 +313,6 @@ queue_or_send(Msg, State) ->
             send_to_controller(Msg, State),
             State#state{msg_state = need_ack}
     end.
-
 
 %% @doc: Helper for connecting to Redis. These commands are
 %% synchronous and if Redis returns something we don't expect, we
@@ -448,7 +404,6 @@ reconnect_loop(Client, #state{reconnect_sleep=ReconnectSleep}=State) ->
             timer:sleep(ReconnectSleep),
             reconnect_loop(Client, State)
     end.
-
 
 send_to_controller(_Msg, #state{controlling_process=undefined}) ->
     ok;

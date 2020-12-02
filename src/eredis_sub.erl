@@ -97,7 +97,6 @@ start_link(Transport, Host, Port, Password, ReconnectSleep,
     eredis_sub_client:start_link(Transport, Host, Port, Password, ReconnectSleep,
                                  MaxQueueSize, QueueBehaviour).
 
-
 %% @doc: Callback for starting from poolboy
 -spec start_link(sub_args()) -> {ok, Pid::pid()} | {error, Reason::term()}.
 start_link(Args) ->
@@ -113,7 +112,6 @@ start_link(Args) ->
 
 stop(Pid) ->
     eredis_sub_client:stop(Pid).
-
 
 -spec controlling_process(Client::pid()) -> ok.
 %% @doc: Make the calling process the controlling process. The
@@ -162,13 +160,11 @@ controlling_process(Client, Pid) ->
 controlling_process(Client, Pid, Timeout) ->
     gen_server:call(Client, {controlling_process, Pid}, Timeout).
 
-
 -spec ack_message(Client::pid()) -> ok.
 %% @doc: acknowledge the receipt of a pubsub message. each pubsub
 %% message must be acknowledged before the next one is received
 ack_message(Client) ->
     gen_server:cast(Client, {ack_message, self()}).
-
 
 %% @doc: Subscribe to the given channels. Returns immediately. The
 %% result will be delivered to the controlling process as any other
@@ -184,8 +180,6 @@ subscribe(Client, Channels) ->
 psubscribe(Client, Channels) ->
     gen_server:cast(Client, {psubscribe, self(), Channels}).
 
-
-
 unsubscribe(Client, Channels) ->
     gen_server:cast(Client, {unsubscribe, self(), Channels}).
 
@@ -198,8 +192,6 @@ punsubscribe(Client, Channels) ->
 %% reflect the channels Redis thinks the client is subscribed to.
 channels(Client) ->
     gen_server:call(Client, get_channels).
-
-
 
 %%
 %% STUFF FOR TRYING OUT PUBSUB

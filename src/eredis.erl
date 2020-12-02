@@ -185,7 +185,6 @@ q(Client, Command) ->
 q(Client, Command, Timeout) ->
     call(Client, Command, Timeout).
 
-
 -spec qp(Client::client(), Pipeline::pipeline()) ->
                 [{ok, return_value()} | {error, Reason::binary()}] |
                 {error, no_connection}.

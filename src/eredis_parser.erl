@@ -44,7 +44,6 @@
 init() ->
     #pstate{}.
 
-
 -spec parse(State::#pstate{}, Data::binary()) ->
                        {ok, eredis:return_value(), NewState::#pstate{}} |
                        {ok, eredis:return_value(), Rest::binary(), NewState::#pstate{}} |
@@ -79,37 +78,29 @@ parse(#pstate{state = undefined} = State, NewData) ->
         %% Status
         <<$+, Data/binary>> ->
             return_result(parse_simple(Data), State, status_continue);
-
         %% Error
         <<$-, Data/binary>> ->
             return_error(parse_simple(Data), State, status_continue);
-
         %% Integer reply
         <<$:, Data/binary>> ->
             return_result(parse_simple(Data), State, status_continue);
-
         %% Multibulk
         <<$*, _Rest/binary>> ->
             return_result(parse_multibulk(NewData), State, multibulk_continue);
-
         %% Bulk
         <<$$, _Rest/binary>> ->
             return_result(parse_bulk(NewData), State, bulk_continue);
-
         _ ->
             {error, unknown_response}
     end;
-
 %% The following clauses all match on different continuation states
 
 parse(#pstate{state = bulk_continue,
               continuation_data = ContinuationData} = State, NewData) ->
     return_result(parse_bulk(ContinuationData, NewData), State, bulk_continue);
-
 parse(#pstate{state = multibulk_continue,
               continuation_data = ContinuationData} = State, NewData) ->
     return_result(parse_multibulk(ContinuationData, NewData), State, multibulk_continue);
-
 parse(#pstate{state = status_continue,
              continuation_data = ContinuationData} = State, NewData) ->
     return_result(parse_simple(ContinuationData, NewData), State, status_continue).
@@ -119,7 +110,6 @@ parse(#pstate{state = status_continue,
 %%
 
 parse_multibulk(Data) when is_binary(Data) -> parse_multibulk(buffer_create(Data));
-
 parse_multibulk(Buffer) ->
     case get_newline_pos(Buffer) of
         undefined ->
@@ -136,7 +126,6 @@ parse_multibulk(Buffer) ->
 parse_multibulk({incomplete_size, Buffer}, NewData0) ->
     NewBuffer = buffer_append(Buffer, NewData0),
     parse_multibulk(NewBuffer);
-
 %% Ran out of data inside do_parse_multibulk in parse_bulk, must
 %% continue traversing the bulks
 parse_multibulk({in_parsing_bulks, Count, Buffer, Acc},
@@ -180,7 +169,6 @@ do_parse_multibulk(Count, Buffer, Acc) ->
 %%
 
 parse_bulk(Data) when is_binary(Data) -> parse_bulk(buffer_create(Data));
-
 parse_bulk(Buffer) ->
   case buffer_hd(Buffer) of
     [$*] -> parse_multibulk(Buffer);
@@ -223,7 +211,6 @@ do_parse_bulk(Buffer) ->
 parse_bulk({incomplete_size, Buffer}, NewData0) ->
     NewBuffer = buffer_append(Buffer, NewData0),
     parse_bulk(NewBuffer);
-
 %% Bulk, continuation from partial bulk value
 parse_bulk({IntSize, Buffer0}, Data) ->
     Buffer = buffer_append(Buffer0, Data),
@@ -236,7 +223,6 @@ parse_bulk({IntSize, Buffer0}, Data) ->
             {continue, {IntSize, Buffer}}
     end.
 
-
 %%
 %% SIMPLE REPLIES
 %%
@@ -247,7 +233,6 @@ parse_bulk({IntSize, Buffer0}, Data) ->
 %% @doc: Parse simple replies. Data must not contain type
 %% identifier. Type must be handled by the caller.
 parse_simple(Data) when is_binary(Data) -> parse_simple(buffer_create(Data));
-
 parse_simple(Buffer) ->
     case get_newline_pos(Buffer) of
         undefined ->

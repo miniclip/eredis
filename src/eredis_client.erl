@@ -218,7 +218,6 @@ handle_connect(State) ->
 %% connection, returns error.
 do_request(_Req, _From, #state{socket = undefined} = State) ->
     {reply, {error, no_connection}, State};
-
 do_request(Req, From, State) ->
     case (State#state.transport_module):send(State#state.socket, Req) of
         ok ->
@@ -234,7 +233,6 @@ do_request(Req, From, State) ->
 %% connection, returns error.
 do_pipeline(_Pipeline, _From, #state{socket = undefined} = State) ->
     {reply, {error, no_connection}, State};
-
 do_pipeline(Pipeline, From, State) ->
     case (State#state.transport_module):send(State#state.socket, Pipeline) of
         ok ->
@@ -257,14 +255,12 @@ handle_response(Data, #state{parser_state = ParserState,
             NewQueue = reply({ReturnCode, Value}, Queue),
             State#state{parser_state = NewParserState,
                         queue = NewQueue};
-
         %% Got complete response, with extra data, reply to client and
         %% recurse over the extra data
         {ReturnCode, Value, Rest, NewParserState} ->
             NewQueue = reply({ReturnCode, Value}, Queue),
             handle_response(Rest, State#state{parser_state = NewParserState,
                                               queue = NewQueue});
-
         %% Parser needs more data, the parser state now contains the
         %% continuation data and we will try calling parse again when
         %% we have more data
