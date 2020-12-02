@@ -42,16 +42,12 @@ elvis-rock:
 	@rebar3 lint
 .PHONY: elvis-rock
 
-test: eunit ct cover
+test: eunit cover
 .PHONY: test
 
 eunit:
 	@rebar3 eunit
 .PHONY: eunit
-
-ct:
-	@rebar3 ct
-.PHONY: ct
 
 cover:
 	@rebar3 cover
