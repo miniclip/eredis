@@ -40,7 +40,7 @@
 %% API
 %%
 
-%% @doc: Initialize the parser
+%% @doc Initialize the parser
 init() ->
     #pstate{}.
 
@@ -52,7 +52,7 @@ init() ->
                        {continue, NewState::#pstate{}} |
                        {error, unknown_response}.
 
-%% @doc: Parses the (possibly partial) response from Redis. Returns
+%% @doc Parses the (possibly partial) response from Redis. Returns
 %% either {ok, Value, NewState}, {ok, Value, Rest, NewState} or
 %% {continue, NewState}. External entry point for parsing.
 %%
@@ -135,7 +135,7 @@ parse_multibulk({in_parsing_bulks, Count, Buffer, Acc},
     %% Continue where we left off
     do_parse_multibulk(Count, NewBuffer, Acc).
 
-%% @doc: Parses the given number of bulks from Data. If Data does not
+%% @doc Parses the given number of bulks from Data. If Data does not
 %% contain enough bulks, {continue, ContinuationData} is returned with
 %% enough information to start parsing with the correct count and
 %% accumulated data.
@@ -230,7 +230,7 @@ parse_bulk({IntSize, Buffer0}, Data) ->
 %%   TData\r\n
 %% Where T is a type byte, like '+', '-', ':'. Data is terminated by \r\n
 
-%% @doc: Parse simple replies. Data must not contain type
+%% @doc Parse simple replies. Data must not contain type
 %% identifier. Type must be handled by the caller.
 parse_simple(Data) when is_binary(Data) -> parse_simple(buffer_create(Data));
 parse_simple(Buffer) ->
@@ -277,7 +277,7 @@ buffer_to_binary({List, _}) -> iolist_to_binary(List).
 
 buffer_size({_, Size}) -> Size.
 
-%% @doc: Helper for handling the result of parsing. Will update the
+%% @doc Helper for handling the result of parsing. Will update the
 %% parser state with the continuation of given name if necessary.
 return_result({ok, Value, <<>>}, _State, _StateName) ->
     {ok, Value, init()};
@@ -286,7 +286,7 @@ return_result({ok, Value, Rest}, _State, _StateName) ->
 return_result({continue, ContinuationData}, State, StateName) ->
     {continue, State#pstate{state = StateName, continuation_data = ContinuationData}}.
 
-%% @doc: Helper for returning an error. Uses return_result/3 and just transforms the {ok, ...} tuple into an error tuple
+%% @doc Helper for returning an error. Uses return_result/3 and just transforms the {ok, ...} tuple into an error tuple
 return_error(Result, State, StateName) ->
     case return_result(Result, State, StateName) of
         {ok, Value, ParserState} ->

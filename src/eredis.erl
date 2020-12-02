@@ -70,7 +70,7 @@
 -type return_value() :: undefined | binary() | [binary() | nonempty_list()].
 -export_type([return_value/0]).
 
--type command() :: [term()]. % supports list, atom, binary or integer
+-type command() :: [term()]. % Supports list, atom, binary or integer
 -export_type([command/0]).
 
 -type pipeline() :: [command()].
@@ -158,7 +158,7 @@ start_link(Transport, Host, Port, Database, Password, ReconnectSleep, ConnectTim
     eredis_client:start_link(Transport, Host, Port, Database, Password,
                              ReconnectSleep, ConnectTimeout).
 
-%% @doc: Callback for starting from poolboy
+%% @doc Callback for starting from poolboy
 -spec start_link(server_args()) -> {ok, Pid::pid()} | {error, Reason::term()}.
 start_link(Args) ->
     Transport      = proplists:get_value(transport, Args, ?DEFAULT_TRANSPORT),
@@ -175,7 +175,7 @@ stop(Client) ->
 
 -spec q(Client::client(), Command::command()) ->
                {ok, return_value()} | {error, Reason::term() | no_connection}.
-%% @doc: Executes the given command in the specified connection. The
+%% @doc Executes the given command in the specified connection. The
 %% command must be a valid Redis command and may contain arbitrary
 %% data which will be converted to binaries. The returned values will
 %% always be binaries.
@@ -188,7 +188,7 @@ q(Client, Command, Timeout) ->
 -spec qp(Client::client(), Pipeline::pipeline()) ->
                 [{ok, return_value()} | {error, Reason::binary()}] |
                 {error, no_connection}.
-%% @doc: Executes the given pipeline (list of commands) in the
+%% @doc Executes the given pipeline (list of commands) in the
 %% specified connection. The commands must be valid Redis commands and
 %% may contain arbitrary data which will be converted to binaries. The
 %% values returned by each command in the pipeline are returned in a list.
@@ -259,7 +259,7 @@ cast(Client, Command) ->
     gen_server:cast(Client, Request).
 
 -spec create_multibulk(Args::command()) -> Command::[command(), ...].
-%% @doc: Creates a multibulk command with all the correct size headers
+%% @doc Creates a multibulk command with all the correct size headers
 create_multibulk(Args) ->
     ArgCount = [<<$*>>, integer_to_list(length(Args)), <<?NL>>],
     ArgsBin = lists:map(fun to_bulk/1, lists:map(fun to_binary/1, Args)),
@@ -269,7 +269,7 @@ create_multibulk(Args) ->
 to_bulk(B) when is_binary(B) ->
     [<<$$>>, integer_to_list(iolist_size(B)), <<?NL>>, B, <<?NL>>].
 
-%% @doc: Convert given value to binary. Fallbacks to
+%% @doc Convert given value to binary. Fallbacks to
 %% term_to_binary/1. For floats, throws {cannot_store_floats, Float}
 %% as we do not want floats to be stored in Redis. Your future self
 %% will thank you for this.

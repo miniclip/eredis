@@ -214,7 +214,7 @@ handle_connect(State) ->
 
 -spec do_request(Req::term(), From::undefined | pid(), #state{}) ->
                         {noreply, #state{}} | {reply, Reply::term() | no_connection, #state{}}.
-%% @doc: Sends the given request to redis. If we do not have a
+%% Sends the given request to redis. If we do not have a
 %% connection, returns error.
 do_request(_Req, _From, #state{socket = undefined} = State) ->
     {reply, {error, no_connection}, State};
@@ -229,7 +229,7 @@ do_request(Req, From, State) ->
 
 -spec do_pipeline(Pipeline::eredis:pipeline(), From::undefined | pid() | {pid(),reference()}, #state{}) ->
                          {noreply, #state{}} | {reply, Reply::term(), #state{}}.
-%% @doc: Sends the entire pipeline to redis. If we do not have a
+%% Sends the entire pipeline to redis. If we do not have a
 %% connection, returns error.
 do_pipeline(_Pipeline, _From, #state{socket = undefined} = State) ->
     {reply, {error, no_connection}, State};
@@ -243,7 +243,7 @@ do_pipeline(Pipeline, From, State) ->
     end.
 
 -spec handle_response(Data::binary(), State::#state{}) -> NewState::#state{}.
-%% @doc: Handle the response coming from Redis. This includes parsing
+%% Handle the response coming from Redis. This includes parsing
 %% and replying to the correct client, handling partial responses,
 %% handling too much data and handling continuations.
 handle_response(Data, #state{parser_state = ParserState,
@@ -268,7 +268,7 @@ handle_response(Data, #state{parser_state = ParserState,
             State#state{parser_state = NewParserState}
     end.
 
-%% @doc: Sends a value to the first client in queue. Returns the new
+%% Sends a value to the first client in queue. Returns the new
 %% queue without this client. If we are still waiting for parts of a
 %% pipelined request, push the reply to the the head of the queue and
 %% wait for another reply from redis.
@@ -288,7 +288,7 @@ reply(Value, Queue) ->
             exit(empty_queue)
     end.
 
-%% @doc Send `Value' to each client in queue. Only useful for sending
+%% Send `Value' to each client in queue. Only useful for sending
 %% an error message. Any in-progress reply data is ignored.
 reply_all(Value, Queue) ->
     case queue:peek(Queue) of
@@ -318,7 +318,7 @@ safe_send(Pid, Value) ->
             error_logger:info_msg("eredis: Failed to send message to ~p with reason ~p~n", [Pid, {Err, Reason}])
     end.
 
-%% @doc: Helper for connecting to Redis, authenticating and selecting
+%% Helper for connecting to Redis, authenticating and selecting
 %% the correct database. These commands are synchronous and if Redis
 %% returns something we don't expect, we crash. Returns {ok, State} or
 %% {SomeError, Reason}.
@@ -405,7 +405,7 @@ authenticate(State) ->
     Password = State#state.password,
     do_sync_command(["AUTH", " \"", Password, "\"\r\n"], State).
 
-%% @doc: Executes the given command synchronously, expects Redis to
+%% Executes the given command synchronously, expects Redis to
 %% return "+OK\r\n", otherwise it will fail.
 do_sync_command(Command, State) ->
     _ = set_socket_opts([{active, false}], State),

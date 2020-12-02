@@ -97,7 +97,7 @@ start_link(Transport, Host, Port, Password, ReconnectSleep,
     eredis_sub_client:start_link(Transport, Host, Port, Password, ReconnectSleep,
                                  MaxQueueSize, QueueBehaviour).
 
-%% @doc: Callback for starting from poolboy
+%% @doc Callback for starting from poolboy
 -spec start_link(sub_args()) -> {ok, Pid::pid()} | {error, Reason::term()}.
 start_link(Args) ->
     Transport      = proplists:get_value(transport, Args, ?DEFAULT_TRANSPORT),
@@ -114,7 +114,7 @@ stop(Pid) ->
     eredis_sub_client:stop(Pid).
 
 -spec controlling_process(Client::pid()) -> ok.
-%% @doc: Make the calling process the controlling process. The
+%% @doc Make the calling process the controlling process. The
 %% controlling process received pubsub-related messages, of which
 %% there are three kinds. In each message, the pid refers to the
 %% eredis client process.
@@ -151,29 +151,29 @@ controlling_process(Client) ->
     controlling_process(Client, self()).
 
 -spec controlling_process(Client::pid(), Pid::pid()) -> ok.
-%% @doc: Make the given process (pid) the controlling process.
+%% @doc Make the given process (pid) the controlling process.
 controlling_process(Client, Pid) ->
     controlling_process(Client, Pid, ?TIMEOUT).
 
-%% @doc: Make the given process (pid) the controlling process subscriber
+%% @doc Make the given process (pid) the controlling process subscriber
 %% with the given Timeout.
 controlling_process(Client, Pid, Timeout) ->
     gen_server:call(Client, {controlling_process, Pid}, Timeout).
 
 -spec ack_message(Client::pid()) -> ok.
-%% @doc: acknowledge the receipt of a pubsub message. each pubsub
+%% @doc acknowledge the receipt of a pubsub message. each pubsub
 %% message must be acknowledged before the next one is received
 ack_message(Client) ->
     gen_server:cast(Client, {ack_message, self()}).
 
-%% @doc: Subscribe to the given channels. Returns immediately. The
+%% @doc Subscribe to the given channels. Returns immediately. The
 %% result will be delivered to the controlling process as any other
 %% message. Delivers {subscribed, Channel::binary(), pid()}
 -spec subscribe(pid(), [channel()]) -> ok.
 subscribe(Client, Channels) ->
     gen_server:cast(Client, {subscribe, self(), Channels}).
 
-%% @doc: Pattern subscribe to the given channels. Returns immediately. The
+%% @doc Pattern subscribe to the given channels. Returns immediately. The
 %% result will be delivered to the controlling process as any other
 %% message. Delivers {subscribed, Channel::binary(), pid()}
 -spec psubscribe(pid(), [channel()]) -> ok.
@@ -186,7 +186,7 @@ unsubscribe(Client, Channels) ->
 punsubscribe(Client, Channels) ->
     gen_server:cast(Client, {punsubscribe, self(), Channels}).
 
-%% @doc: Returns the channels the given client is currently
+%% @doc Returns the channels the given client is currently
 %% subscribing to. Note: this list is based on the channels at startup
 %% and any channel added during runtime. It might not immediately
 %% reflect the channels Redis thinks the client is subscribed to.
@@ -206,7 +206,6 @@ receiver(Sub) ->
             ?MODULE:receiver(Sub)
     end.
 
-%% @private
 sub_example() ->
     {ok, Sub} = start_link(),
     Receiver = spawn_link(fun () ->
@@ -216,7 +215,6 @@ sub_example() ->
                           end),
     {Sub, Receiver}.
 
-%% @private
 psub_example() ->
     {ok, Sub} = start_link(),
     Receiver = spawn_link(fun () ->
@@ -226,13 +224,11 @@ psub_example() ->
                           end),
     {Sub, Receiver}.
 
-%% @private
 pub_example() ->
     {ok, P} = eredis:start_link(),
     {ok, <<_/binary>>} = eredis:q(P, ["PUBLISH", "foo", "bar"]),
     eredis_client:stop(P).
 
-%% @private
 ppub_example() ->
     {ok, P} = eredis:start_link(),
     {ok, <<_/binary>>} = eredis:q(P, ["PUBLISH", "foo123", "bar"]),

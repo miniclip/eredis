@@ -268,7 +268,7 @@ add_channels(Channels, OldChannels) ->
     end, OldChannels, Channels).
 
 -spec handle_response(Data::binary(), State::#state{}) -> NewState::#state{}.
-%% @doc: Handle the response coming from Redis. This should only be
+%% Handle the response coming from Redis. This should only be
 %% channel messages that we should forward to the controlling process
 %% or queue if the previous message has not been acked. If there are
 %% more than a single response in the data we got, queue the responses
@@ -286,7 +286,7 @@ handle_response(Data, #state{parser_state = ParserState} = State) ->
             State#state{parser_state = NewParserState}
     end.
 
-%% @doc: Sends a reply to the controlling process if the process has
+%% Sends a reply to the controlling process if the process has
 %% acknowledged the previous process, otherwise the message is queued
 %% for later delivery.
 reply({ok, [<<"message">>, Channel, Message]}, State) ->
@@ -314,7 +314,7 @@ queue_or_send(Msg, State) ->
             State#state{msg_state = need_ack}
     end.
 
-%% @doc: Helper for connecting to Redis. These commands are
+%% Helper for connecting to Redis. These commands are
 %% synchronous and if Redis returns something we don't expect, we
 %% crash. Returns {ok, State} or {error, Reason}.
 connect(State) ->
@@ -356,7 +356,7 @@ authenticate(State) ->
     Password = State#state.password,
     do_sync_command(["AUTH", " \"", Password, "\"\r\n"], State).
 
-%% @doc: Executes the given command synchronously, expects Redis to
+%% Executes the given command synchronously, expects Redis to
 %% return "+OK\r\n", otherwise it will fail.
 do_sync_command(Command, State) ->
     ok = set_socket_opts([{active, false}], State),
@@ -384,7 +384,7 @@ set_socket_opts(Opts, State) ->
             ssl:setopts(State#state.socket, Opts)
     end.
 
-%% @doc: Loop until a connection can be established, this includes
+%% Loop until a connection can be established, this includes
 %% successfully issuing the auth and select calls. When we have a
 %% connection, give the socket to the redis client.
 reconnect_loop(Client, #state{reconnect_sleep=ReconnectSleep}=State) ->
