@@ -26,11 +26,6 @@ add_channels(Sub, Channels) ->
               end
       end, Channels).
 
-
-
-
-
-
 pubsub_test() ->
     Pub = c(),
     Sub = s(),
@@ -92,7 +87,6 @@ pubsub_manage_subscribers_test() ->
     Ref = erlang:monitor(process, Sub),
     receive {'DOWN', Ref, process, Sub, _} -> ok end.
 
-
 pubsub_connect_disconnect_messages_test() ->
     Pub = c(),
     Sub = s(),
@@ -109,8 +103,6 @@ pubsub_connect_disconnect_messages_test() ->
     ?assertEqual({eredis_connected, Sub}, wait_for_msg(S)),
     eredis_sub:stop(Sub).
 
-
-
 drop_queue_test() ->
     Pub = c(),
     {ok, Sub} = eredis_sub:start_link("127.0.0.1", 6379, "", 100, 10, drop),
@@ -122,7 +114,6 @@ drop_queue_test() ->
     receive M1 -> ?assertEqual({message,<<"foo">>,<<"1">>, Sub}, M1) end,
     receive M2 -> ?assertEqual({dropped, 11}, M2) end,
     eredis_sub:stop(Sub).
-
 
 crash_queue_test() ->
     Pub = c(),
@@ -137,8 +128,6 @@ crash_queue_test() ->
 
     receive M1 -> ?assertEqual({message,<<"foo">>,<<"1">>, Sub}, M1) end,
     receive M2 -> ?assertEqual({'DOWN', Ref, process, Sub, max_queue_size}, M2) end.
-
-
 
 dynamic_channels_test() ->
     Pub = c(),
@@ -175,7 +164,6 @@ dynamic_channels_test() ->
     receive M3 -> ?assertEqual({unsubscribed, <<"otherchan">>, Sub}, M3) end,
 
     ?assertEqual({ok, [<<"newchan">>]}, eredis_sub:channels(Sub)).
-
 
 recv_all(Sub) ->
     recv_all(Sub, []).
@@ -232,10 +220,6 @@ get_state([{data, [{"State", State}]} | _]) ->
 get_state([_|Rest]) ->
     get_state(Rest).
 
-
-
-
-
 % Tests for Pattern Subscribe
 
 add_channels_pattern(Sub, Channels) ->
@@ -248,10 +232,6 @@ add_channels_pattern(Sub, Channels) ->
                       eredis_sub:ack_message(Sub)
               end
       end, Channels).
-
-
-
-
 
 pubsub_pattern_test() ->
     Pub = c(),
@@ -283,7 +263,4 @@ pubsub_pattern_test() ->
     end,
 
     eredis_sub:stop(Sub).
-
-
-
 

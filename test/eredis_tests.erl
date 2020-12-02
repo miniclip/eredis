@@ -21,7 +21,6 @@ get_set_test() ->
     ?assertEqual({ok, <<"OK">>}, eredis:q(C, ["SET", foo, bar])),
     ?assertEqual({ok, <<"bar">>}, eredis:q(C, ["GET", foo])).
 
-
 delete_test() ->
     C = c(),
     ?assertMatch({ok, _}, eredis:q(C, ["DEL", foo])),
@@ -147,8 +146,6 @@ c() ->
     ?assertMatch({ok, _}, Res),
     {ok, C} = Res,
     C.
-
-
 
 c_no_reconnect() ->
     Res = eredis:start_link("127.0.0.1", 6379, 0, "", no_reconnect),
