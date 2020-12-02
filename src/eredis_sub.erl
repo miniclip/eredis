@@ -1,9 +1,13 @@
 %%
-%% Erlang PubSub Redis client
+%% Erlang Redis Pub/Sub client
 %%
 -module(eredis_sub).
 -include("eredis.hrl").
 -include("eredis_defaults.hrl").
+
+%% ------------------------------------------------------------------
+%% API Function Exports
+%% ------------------------------------------------------------------
 
 -export([start_link/0, start_link/1, start_link/3, start_link/4, start_link/6, start_link/7,
          stop/1, controlling_process/1, controlling_process/2, controlling_process/3,
@@ -39,8 +43,16 @@
 -ignore_xref(ppub_example/0).
 -endif.
 
+%% ------------------------------------------------------------------
+%% Macro Definitions
+%% ------------------------------------------------------------------
+
 -define(DEFAULT_MAX_QUEUE_SIZE, infinity).
 -define(DEFAULT_QUEUE_BEHAVIOUR, drop).
+
+%% ------------------------------------------------------------------
+%% Type Definitions
+%% ------------------------------------------------------------------
 
 -type sub_option() ::
         eredis:option() |
@@ -57,9 +69,9 @@
 -type eredis_queue() :: queue:queue().
 -export_type([eredis_queue/0]).
 
-%%
-%% PUBLIC API
-%%
+%% ------------------------------------------------------------------
+%% API Function Definitions
+%% ------------------------------------------------------------------
 
 start_link() ->
     start_link([]).
@@ -193,9 +205,9 @@ punsubscribe(Client, Channels) ->
 channels(Client) ->
     gen_server:call(Client, get_channels).
 
-%%
-%% STUFF FOR TRYING OUT PUBSUB
-%%
+%% ------------------------------------------------------------------
+%% "Internal" Function Definitions
+%% ------------------------------------------------------------------
 
 -ifdef(TEST).
 receiver(Sub) ->
@@ -234,4 +246,3 @@ ppub_example() ->
     {ok, <<_/binary>>} = eredis:q(P, ["PUBLISH", "foo123", "bar"]),
     eredis_client:stop(P).
 -endif.
-

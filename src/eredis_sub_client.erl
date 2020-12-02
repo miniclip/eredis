@@ -1,11 +1,9 @@
 %% @hidden
 %%
-%% eredis_pubsub_client
-%%
-%% This client implements a subscriber to a Redis pubsub channel. It
+%% This client implements a subscriber to a Redis Pub/Sub channel. It
 %% is implemented in the same way as eredis_client, except channel
 %% messages are streamed to the controlling process. Messages are
-%% queued and delivered when the client acknowledges receipt.
+%% queued and delivered when the client acknowledges reception.
 %%
 %% There is one consuming process per eredis_sub_client.
 -module(eredis_sub_client).
@@ -49,7 +47,6 @@
           msg_state = need_ack :: ready | need_ack
 }).
 
-%% API
 -export([start_link/7, stop/1]).
 
 -ifdef(TEST).
@@ -60,13 +57,8 @@
 -ignore_xref(get_socket/1).
 -endif.
 
-%% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
-
-%%
-%% API
-%%
 
 -spec start_link(Transport::eredis:transport(),
                  Host::eredis:host(),
@@ -82,10 +74,6 @@ start_link(Transport, Host, Port, Password, ReconnectSleep, MaxQueueSize, QueueB
 
 stop(Pid) ->
     gen_server:call(Pid, stop).
-
-%%====================================================================
-%% gen_server callbacks
-%%====================================================================
 
 init([Transport, Host, Port, Password, ReconnectSleep, MaxQueueSize, QueueBehaviour]) ->
     State = #state{transport = Transport,
@@ -247,10 +235,6 @@ code_change(_OldVsn, State, _Extra) ->
 get_controlling_process(#state{ controlling_process = {_, Pid} }) -> Pid.
 get_socket(#state{ socket = Socket }) -> Socket.
 -endif.
-
-%%--------------------------------------------------------------------
-%%% Internal functions
-%%--------------------------------------------------------------------
 
 -spec remove_channels([binary()], [binary()]) -> [binary()].
 remove_channels(Channels, OldChannels) ->

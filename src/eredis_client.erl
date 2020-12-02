@@ -1,37 +1,31 @@
 %% @hidden
 %%
-%% eredis_client
-%%
-%% The client is implemented as a gen_server which keeps one socket
-%% open to a single Redis instance. Users call us using the API in
+%% The client is implemented as a gen_server which keeps a socket
+%% open to a single Redis instance. Users call it using the API in
 %% eredis.erl.
 %%
 %% The client works like this:
-%%  * When starting up, we connect to Redis with the given connection
-%%     information, or fail.
-%%  * Users calls us using gen_server:call, we send the request to Redis,
-%%    add the calling process at the end of the queue and reply with
-%%    noreply. We are then free to handle new requests and may reply to
+%%  * When starting up, it connects to Redis with the given connection
+%%     information, or fails.
+%%  * Users call it using gen_server:call, it sends the request to Redis,
+%%    adds the calling process at the end of the queue and replies with
+%%    noreply. It is then free to handle new requests and may reply to
 %%    the user later.
-%%  * We receive data on the socket, we parse the response and reply to
+%%  * It receives data on the socket, it parses the response and replies to
 %%    the client at the front of the queue. If the parser does not have
-%%    enough data to parse the complete response, we will wait for more
+%%    enough data to parse the complete response, it will wait for more
 %%    data to arrive.
-%%  * For pipeline commands, we include the number of responses we are
+%%  * For pipeline commands, it includes the number of responses it is
 %%    waiting for in each element of the queue. Responses are queued until
-%%    we have all the responses we need and then reply with all of them.
-%%
+%%    it has all the responses it needs and then replies with all of them.
 -module(eredis_client).
 -behaviour(gen_server).
 -include("eredis.hrl").
 
-%% API
 -export([start_link/7, stop/1]).
 
-%% proc_lib callbacks
 -export([init/2]). -ignore_xref([init/2]).
 
-%% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
@@ -60,10 +54,6 @@
           queue :: undefined | eredis_sub:eredis_queue()
 }).
 
-%%
-%% API
-%%
-
 -spec start_link(Transport::eredis:transport(),
                  Host::eredis:host(),
                  Port::0..65535,
@@ -84,10 +74,6 @@ get_socket(Pid) ->
     State = sys:get_state(Pid),
     State#state.socket.
 -endif.
-
-%%====================================================================
-%% proc_lib callbacks
-%%====================================================================
 
 init(ParentPid, [Transport, Host, Port, Database, Password, ReconnectSleep, ConnectTimeout])
   when Transport =:= tcp;
@@ -112,10 +98,6 @@ init(ParentPid, [Transport, Host, Port, Database, Password, ReconnectSleep, Conn
             self() ! connect,
             gen_server:enter_loop(?MODULE, [], State)
     end.
-
-%%====================================================================
-%% gen_server callbacks
-%%====================================================================
 
 init(_) ->
     ignore.
@@ -183,10 +165,6 @@ terminate(_Reason, _State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
-
-%%--------------------------------------------------------------------
-%%% Internal functions
-%%--------------------------------------------------------------------
 
 connect_on_init(ParentPid, State) ->
     case handle_connect(State) of

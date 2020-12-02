@@ -1,14 +1,11 @@
-%%
 %% Erlang Redis client
-%%
-%% Usage:
-%%   {ok, Client} = eredis:start_link().
-%%   {ok, <<"OK">>} = eredis:q(Client, ["SET", "foo", "bar"]).
-%%   {ok, <<"bar">>} = eredis:q(Client, ["GET", "foo"]).
-
 -module(eredis).
 -include("eredis.hrl").
 -include("eredis_defaults.hrl").
+
+%% ------------------------------------------------------------------
+%% Macro Definitions
+%% ------------------------------------------------------------------
 
 -define(is_host(Host),
         (is_list((Host)) orelse % regular hostname
@@ -19,6 +16,10 @@
 
 -define(is_reconnect_sleep(ReconnectSleep),
         (is_integer((ReconnectSleep)) orelse (ReconnectSleep) =:= no_reconnect)).
+
+%% ------------------------------------------------------------------
+%% API Function Exports
+%% ------------------------------------------------------------------
 
 -export([start_link/0, start_link/1, start_link/2, start_link/3, start_link/4,
          start_link/5, start_link/6, start_link/7, stop/1, q/2, q/3, qp/2, qp/3,
@@ -42,8 +43,11 @@
 -ignore_xref(qp_async/2).
 -ignore_xref(qp_async/3).
 
-%% Exported for testing
 -export([create_multibulk/1]).
+
+%% ------------------------------------------------------------------
+%% Type Definitions
+%% ------------------------------------------------------------------
 
 -type transport() :: tcp | ssl.
 -export_type([transport/0]).
@@ -87,9 +91,9 @@
                   {via,module(),term()}.
 -export_type([client/0]).
 
-%%
-%% PUBLIC API
-%%
+%% ------------------------------------------------------------------
+%% API Function Definitions
+%% ------------------------------------------------------------------
 
 start_link() ->
     start_link([]).
@@ -240,9 +244,9 @@ qp_async(Client, Pipeline, Pid) when is_pid(Pid) ->
     gen_server:cast(Client, Request),
     {await, Tag}.
 
-%%
-%% INTERNAL HELPERS
-%%
+%% ------------------------------------------------------------------
+%% Internal Function Definitions
+%% ------------------------------------------------------------------
 
 call(Client, Command, Timeout) ->
     Request = {request, create_multibulk(Command)},
