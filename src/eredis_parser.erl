@@ -39,12 +39,12 @@
 init() ->
     #pstate{}.
 
--spec parse(State::#pstate{}, Data::binary()) ->
-                       {ok, eredis:return_value(), NewState::#pstate{}} |
-                       {ok, eredis:return_value(), Rest::binary(), NewState::#pstate{}} |
-                       {error, ErrString::binary(), NewState::#pstate{}} |
-                       {error, ErrString::binary(), Rest::binary(), NewState::#pstate{}} |
-                       {continue, NewState::#pstate{}} |
+-spec parse(State::pstate(), Data::binary()) ->
+                       {ok, eredis:return_value(), NewState::pstate()} |
+                       {ok, eredis:return_value(), Rest::binary(), NewState::pstate()} |
+                       {error, ErrString::binary(), NewState::pstate()} |
+                       {error, ErrString::binary(), Rest::binary(), NewState::pstate()} |
+                       {continue, NewState::pstate()} |
                        {error, unknown_response}.
 
 %% @doc Parses the (possibly partial) response from Redis. Returns
@@ -271,7 +271,8 @@ return_result({ok, Value, Rest}, _State, _StateName) ->
 return_result({continue, ContinuationData}, State, StateName) ->
     {continue, State#pstate{state = StateName, continuation_data = ContinuationData}}.
 
-%% @doc Helper for returning an error. Uses return_result/3 and just transforms the {ok, ...} tuple into an error tuple
+%% @doc Helper for returning an error. Uses return_result/3 and just transforms the {ok, ...}
+%% tuple into an error tuple
 return_error(Result, State, StateName) ->
     case return_result(Result, State, StateName) of
         {ok, Value, ParserState} ->

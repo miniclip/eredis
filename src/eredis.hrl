@@ -11,6 +11,7 @@
           state = undefined :: parser_state() | undefined,
           continuation_data :: continuation_data() | undefined
 }).
+-type pstate() :: #pstate{}.
 
 -define(NL, "\r\n").
 

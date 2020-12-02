@@ -129,7 +129,7 @@ bulk_nil_chunked_test() ->
     B2 = <<"\r\n">>,
     Buffer = eredis_parser:buffer_create(<<"$-1">>),
     ?assertEqual({continue, #pstate{state = bulk_continue,
-                                    continuation_data = {incomplete_size,Buffer}}},
+                                    continuation_data = {incomplete_size, Buffer}}},
                  eredis_parser:parse(State1, B1)),
 
     {continue, State2} = eredis_parser:parse(State1, B1),
@@ -189,7 +189,7 @@ multibulk_split_parse_test() ->
     ?assertEqual({continue,
                   #pstate{state = multibulk_continue,
                           continuation_data =
-                              {in_parsing_bulks,2,Buffer,[<<"1">>]}}},
+                              {in_parsing_bulks, 2, Buffer, [<<"1">>]}}},
                  eredis_parser:parse(State1, B1)),
 
     {continue, State2} = eredis_parser:parse(State1, B1),

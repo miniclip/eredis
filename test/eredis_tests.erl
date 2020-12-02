@@ -3,7 +3,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -include("eredis.hrl").
 
--define(assertReceive(Pattern),
+-define(?ASSERT_RECEIVE(Pattern),
         (fun () -> receive Msg -> ?assertMatch((Pattern), Msg)
                    after 5000 -> exit(timeout)
                    end
@@ -137,9 +137,9 @@ qp_async_test() ->
     {await, Tag1} = eredis:qp_async(C, [["SET", foo, 1]]),
     {await, Tag2} = eredis:qp_async(C, [["INCR", foo], ["INCR", foo]]),
     {await, Tag3} = eredis:qp_async(C, [["DEL", foo], ["INCR", foo]]),
-    ?assertReceive({Tag1, [{ok, <<"OK">>}]}),
-    ?assertReceive({Tag2, [{ok, <<"2">>}, {ok, <<"3">>}]}),
-    ?assertReceive({Tag3, [{ok, <<"1">>}, {ok, <<"1">>}]}).
+    ?ASSERT_RECEIVE({Tag1, [{ok, <<"OK">>}]}),
+    ?ASSERT_RECEIVE({Tag2, [{ok, <<"2">>}, {ok, <<"3">>}]}),
+    ?ASSERT_RECEIVE({Tag3, [{ok, <<"1">>}, {ok, <<"1">>}]}).
 
 c() ->
     Res = eredis:start_link(),
@@ -167,7 +167,7 @@ multibulk_test_() ->
     ].
 
 undefined_database_test() ->
-    ?assertMatch({ok,_}, eredis:start_link("localhost", 6379, undefined)).
+    ?assertMatch({ok, _}, eredis:start_link("localhost", 6379, undefined)).
 
 connection_failure_during_start_no_reconnect_test() ->
     process_flag(trap_exit, false),

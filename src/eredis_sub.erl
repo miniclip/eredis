@@ -13,7 +13,7 @@
          stop/1, controlling_process/1, controlling_process/2, controlling_process/3,
          ack_message/1, subscribe/2, unsubscribe/2, channels/1]).
 
--export([psubscribe/2,punsubscribe/2]).
+-export([psubscribe/2, punsubscribe/2]).
 
 -ignore_xref(start_link/0).
 -ignore_xref(start_link/1).
@@ -35,7 +35,7 @@
 -ifdef(TEST).
 -export([receiver/1, sub_example/0, pub_example/0]).
 
--export([psub_example/0,ppub_example/0]).
+-export([psub_example/0, ppub_example/0]).
 
 -ignore_xref(sub_example/0).
 -ignore_xref(pub_example/0).
@@ -213,7 +213,6 @@ channels(Client) ->
 receiver(Sub) ->
     receive
         Msg ->
-            io:format("received ~p~n", [Msg]),
             ack_message(Sub),
             ?MODULE:receiver(Sub)
     end.

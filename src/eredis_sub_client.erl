@@ -46,6 +46,7 @@
           % message.
           msg_state = need_ack :: ready | need_ack
 }).
+-type state() :: #state{}.
 
 -export([start_link/7, stop/1]).
 
@@ -181,7 +182,8 @@ handle_info({Tag, _Socket, _Reason}, #state{transport_error_tag = Tag} = State) 
 %% clients. If desired, spawn of a new process which will try to reconnect and
 %% notify us when Redis is ready. In the meantime, we can respond with
 %% an error message to all our clients.
-handle_info({Tag, _Socket}, #state{transport_closure_tag = Tag, reconnect_sleep = no_reconnect} = State) ->
+handle_info({Tag, _Socket}, #state{transport_closure_tag = Tag, reconnect_sleep = no_reconnect}
+            = State) ->
     %% If we aren't going to reconnect, then there is nothing else for this process to do.
     {stop, normal, State#state{socket = undefined}};
 handle_info({Tag, _Socket}, #state{transport_closure_tag = Tag} = State) ->
@@ -218,8 +220,8 @@ handle_info({'DOWN', Ref, process, Pid, _Reason},
 %% that Poolboy uses to manage the connections.
 handle_info(stop, State) ->
     {stop, shutdown, State};
-handle_info(_Info, State) ->
-    {stop, {unhandled_message, _Info}, State}.
+handle_info(Info, State) ->
+    {stop, {unhandled_message, Info}, State}.
 
 terminate(_Reason, State) ->
     case State#state.socket of
@@ -251,7 +253,7 @@ add_channels(Channels, OldChannels) ->
         end
     end, OldChannels, Channels).
 
--spec handle_response(Data::binary(), State::#state{}) -> NewState::#state{}.
+-spec handle_response(Data::binary(), State::state()) -> NewState::state().
 %% Handle the response coming from Redis. This should only be
 %% channel messages that we should forward to the controlling process
 %% or queue if the previous message has not been acked. If there are

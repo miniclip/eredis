@@ -7,15 +7,12 @@
 %% Macro Definitions
 %% ------------------------------------------------------------------
 
--define(is_host(Host),
+-define(IS_HOST(Host),
         (is_list((Host)) orelse % regular hostname
          (tuple_size((Host)) =:= 2 andalso element(1, (Host)) =:= local))). % UNIX socket
 
--define(is_database(Database),
+-define(IS_DATABASE(Database),
         (is_integer((Database)) orelse (Database) =:= undefined)).
-
--define(is_reconnect_sleep(ReconnectSleep),
-        (is_integer((ReconnectSleep)) orelse (ReconnectSleep) =:= no_reconnect)).
 
 %% ------------------------------------------------------------------
 %% API Function Exports
@@ -86,9 +83,9 @@
 %% Type of gen_server process id
 -type client() :: (Pid::pid()) |
                   (Name::atom()) |
-                  {Name::atom(),Node::atom()} |
-                  {global,term()} |
-                  {via,module(),term()}.
+                  {Name::atom(), Node::atom()} |
+                  {global, term()} |
+                  {via, module(), term()}.
 -export_type([client/0]).
 
 %% ------------------------------------------------------------------
@@ -157,8 +154,8 @@ start_link(Host, Port, Database, Password, ReconnectSleep, ConnectTimeout) ->
      ).
 
 start_link(Transport, Host, Port, Database, Password, ReconnectSleep, ConnectTimeout)
-  when is_atom(Transport), ?is_host(Host), is_integer(Port), ?is_database(Database),
-       is_list(Password), ?is_database(Database), is_integer(ConnectTimeout) ->
+  when is_atom(Transport), ?IS_HOST(Host), is_integer(Port), ?IS_DATABASE(Database),
+       is_list(Password), ?IS_DATABASE(Database), is_integer(ConnectTimeout) ->
     eredis_client:start_link(Transport, Host, Port, Database, Password,
                              ReconnectSleep, ConnectTimeout).
 
@@ -216,13 +213,15 @@ qp_noreply(Client, Pipeline) ->
     gen_server:cast(Client, Request).
 
 -spec q_async(Client::client(), Command::command()) -> {await, Tag::reference()}.
-% @doc Executes the command, and sends a message to this process with the response (with either error or success).
+% @doc Executes the command, and sends a message to this process with the response (with either
+% error or success).
 % Message is of the form `{Tag, Reply}', where `Reply' is the reply expected from `q/2'.
 q_async(Client, Command) ->
     q_async(Client, Command, self()).
 
 -spec q_async(Client::client(), Command::command(), Pid::pid()|atom()) -> {await, Tag::reference()}.
-%% @doc Executes the command, and sends a message to `Pid' with the response (with either or success).
+%% @doc Executes the command, and sends a message to `Pid' with the response (with either or
+%% success).
 %% @see q_async/2
 q_async(Client, Command, Pid) when is_pid(Pid) ->
     Tag = make_ref(),
@@ -232,7 +231,8 @@ q_async(Client, Command, Pid) when is_pid(Pid) ->
     {await, Tag}.
 
 -spec qp_async(Client::client(), Pipeline::pipeline()) -> {await, Tag::reference()}.
-% @doc Executes the pipeline, and sends a message to this process with the response (with either error or success).
+% @doc Executes the pipeline, and sends a message to this process with the response (with either
+% error or success).
 % Message is of the form `{Tag, Reply}', where `Reply' is the reply expected from `qp/2'.
 qp_async(Client, Pipeline) ->
     qp_async(Client, Pipeline, self()).

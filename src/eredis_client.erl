@@ -53,6 +53,7 @@
           parser_state :: undefined | #pstate{},
           queue :: undefined | eredis_sub:eredis_queue()
 }).
+-type state() :: #state{}.
 
 -spec start_link(Transport::eredis:transport(),
                  Host::eredis:host(),
@@ -92,7 +93,7 @@ init(ParentPid, [Transport, Host, Port, Database, Password, ReconnectSleep, Conn
 
     case ReconnectSleep =:= no_reconnect of
         true ->
-            connect_on_init(ParentPid,State);
+            connect_on_init(ParentPid, State);
         false ->
             proc_lib:init_ack(ParentPid, {ok, self()}),
             self() ! connect,
@@ -157,8 +158,8 @@ handle_info(connect, #state{socket = undefined} = State) ->
     handle_connect(State);
 handle_info(stop, State) ->
     {stop, shutdown, State};
-handle_info(_Info, State) ->
-    {stop, {unhandled_message, _Info}, State}.
+handle_info(Info, State) ->
+    {stop, {unhandled_message, Info}, State}.
 
 terminate(_Reason, _State) ->
     ok.
@@ -190,8 +191,8 @@ handle_connect(State) ->
             {noreply, State}
     end.
 
--spec do_request(Req::term(), From::undefined | pid(), #state{}) ->
-                        {noreply, #state{}} | {reply, Reply::term() | no_connection, #state{}}.
+-spec do_request(Req::term(), From::undefined | pid(), state()) ->
+                        {noreply, state()} | {reply, Reply::term() | no_connection, state()}.
 %% Sends the given request to redis. If we do not have a
 %% connection, returns error.
 do_request(_Req, _From, #state{socket = undefined} = State) ->
@@ -205,8 +206,9 @@ do_request(Req, From, State) ->
             {reply, {error, Reason}, State}
     end.
 
--spec do_pipeline(Pipeline::eredis:pipeline(), From::undefined | pid() | {pid(),reference()}, #state{}) ->
-                         {noreply, #state{}} | {reply, Reply::term(), #state{}}.
+-spec do_pipeline(Pipeline::eredis:pipeline(), From::undefined | pid() | {pid(), reference()},
+                  state()) ->
+                         {noreply, state()} | {reply, Reply::term(), state()}.
 %% Sends the entire pipeline to redis. If we do not have a
 %% connection, returns error.
 do_pipeline(_Pipeline, _From, #state{socket = undefined} = State) ->
@@ -220,7 +222,7 @@ do_pipeline(Pipeline, From, State) ->
             {reply, {error, Reason}, State}
     end.
 
--spec handle_response(Data::binary(), State::#state{}) -> NewState::#state{}.
+-spec handle_response(Data::binary(), State::state()) -> NewState::state().
 %% Handle the response coming from Redis. This includes parsing
 %% and replying to the correct client, handling partial responses,
 %% handling too much data and handling continuations.
@@ -293,7 +295,8 @@ safe_send(Pid, Value) ->
     try erlang:send(Pid, Value)
     catch
         Err:Reason ->
-            error_logger:info_msg("eredis: Failed to send message to ~p with reason ~p~n", [Pid, {Err, Reason}])
+            error_logger:info_msg("eredis: Failed to send message to ~p with reason ~p~n",
+                                  [Pid, {Err, Reason}])
     end.
 
 %% Helper for connecting to Redis, authenticating and selecting
@@ -355,8 +358,8 @@ get_addr({local, Path}) ->
     {ok, {local, {local, Path}}};
 get_addr(Hostname) ->
     case inet:parse_address(Hostname) of
-        {ok, {_,_,_,_} = Addr} ->         {ok, {inet, Addr}};
-        {ok, {_,_,_,_,_,_,_,_} = Addr} -> {ok, {inet6, Addr}};
+        {ok, {_, _, _, _} = Addr} ->         {ok, {inet, Addr}};
+        {ok, {_, _, _, _, _, _, _, _} = Addr} -> {ok, {inet6, Addr}};
         {error, einval} ->
             case inet:getaddr(Hostname, inet6) of
                  {error, _} ->
