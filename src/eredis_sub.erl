@@ -11,9 +11,33 @@
 
 -export([psubscribe/2,punsubscribe/2]).
 
+-ignore_xref(start_link/0).
+-ignore_xref(start_link/1).
+-ignore_xref(start_link/3).
+-ignore_xref(start_link/4).
+-ignore_xref(start_link/6).
+-ignore_xref(start_link/7).
+-ignore_xref(stop/1).
+-ignore_xref(controlling_process/1).
+-ignore_xref(controlling_process/2).
+-ignore_xref(controlling_process/3).
+-ignore_xref(ack_message/1).
+-ignore_xref(subscribe/2).
+-ignore_xref(unsubscribe/2).
+-ignore_xref(channels/1).
+-ignore_xref(psubscribe/2).
+-ignore_xref(punsubscribe/2).
+
+-ifdef(TEST).
 -export([receiver/1, sub_example/0, pub_example/0]).
 
 -export([psub_example/0,ppub_example/0]).
+
+-ignore_xref(sub_example/0).
+-ignore_xref(pub_example/0).
+-ignore_xref(psub_example/0).
+-ignore_xref(ppub_example/0).
+-endif.
 
 -define(DEFAULT_MAX_QUEUE_SIZE, infinity).
 -define(DEFAULT_QUEUE_BEHAVIOUR, drop).

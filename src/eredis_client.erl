@@ -37,6 +37,8 @@
 
 -ifdef(TEST).
 -export([get_socket/1]).
+
+-ignore_xref(get_socket/1).
 -endif.
 
 -record(state, {

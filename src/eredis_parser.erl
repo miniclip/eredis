@@ -21,13 +21,20 @@
 
 -module(eredis_parser).
 -include("eredis.hrl").
--include_lib("eunit/include/eunit.hrl").
 
 -export([init/0, parse/2]).
 
-%% Exported for testing
+-ifdef(TEST).
 -export([parse_bulk/1, parse_bulk/2,
          parse_multibulk/1, parse_multibulk/2, buffer_create/0, buffer_create/1]).
+
+-ignore_xref(parse_bulk/1).
+-ignore_xref(parse_bulk/2).
+-ignore_xref(parse_multibulk/1).
+-ignore_xref(parse_multibulk/2).
+-ignore_xref(buffer_create/0).
+-ignore_xref(buffer_create/1).
+-endif.
 
 %%
 %% API

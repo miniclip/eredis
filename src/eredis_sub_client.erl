@@ -52,6 +52,14 @@
 %% API
 -export([start_link/7, stop/1]).
 
+-ifdef(TEST).
+-export([get_controlling_process/1]).
+-export([get_socket/1]).
+
+-ignore_xref(get_controlling_process/1).
+-ignore_xref(get_socket/1).
+-endif.
+
 %% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
@@ -265,6 +273,11 @@ terminate(_Reason, State) ->
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
+
+-ifdef(TEST).
+get_controlling_process(#state{ controlling_process = {_, Pid} }) -> Pid.
+get_socket(#state{ socket = Socket }) -> Socket.
+-endif.
 
 %%--------------------------------------------------------------------
 %%% Internal functions

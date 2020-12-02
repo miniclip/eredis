@@ -24,6 +24,24 @@
          start_link/5, start_link/6, start_link/7, stop/1, q/2, q/3, qp/2, qp/3,
          q_noreply/2, qp_noreply/2, q_async/2, q_async/3, qp_async/2, qp_async/3]).
 
+-ignore_xref(start_link/1).
+-ignore_xref(start_link/2).
+-ignore_xref(start_link/3).
+-ignore_xref(start_link/4).
+-ignore_xref(start_link/5).
+-ignore_xref(start_link/6).
+-ignore_xref(start_link/7).
+-ignore_xref(stop/1).
+-ignore_xref(q/3).
+-ignore_xref(qp/2).
+-ignore_xref(qp/3).
+-ignore_xref(q_noreply/2).
+-ignore_xref(qp_noreply/2).
+-ignore_xref(q_async/2).
+-ignore_xref(q_async/3).
+-ignore_xref(qp_async/2).
+-ignore_xref(qp_async/3).
+
 %% Exported for testing
 -export([create_multibulk/1]).
 
