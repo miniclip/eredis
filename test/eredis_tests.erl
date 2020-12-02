@@ -3,7 +3,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -include("eredis.hrl").
 
--define(?ASSERT_RECEIVE(Pattern),
+-define(ASSERT_RECEIVE(Pattern),
         (fun () -> receive Msg -> ?assertMatch((Pattern), Msg)
                    after 5000 -> exit(timeout)
                    end

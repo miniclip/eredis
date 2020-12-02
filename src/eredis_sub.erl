@@ -212,7 +212,7 @@ channels(Client) ->
 -ifdef(TEST).
 receiver(Sub) ->
     receive
-        Msg ->
+        _Msg ->
             ack_message(Sub),
             ?MODULE:receiver(Sub)
     end.
