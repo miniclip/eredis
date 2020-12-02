@@ -46,7 +46,7 @@ init() ->
 
 
 -spec parse(State::#pstate{}, Data::binary()) ->
-                   {ok, eredis:return_value(), NewState::#pstate{}} |
+                       {ok, eredis:return_value(), NewState::#pstate{}} |
                        {ok, eredis:return_value(), Rest::binary(), NewState::#pstate{}} |
                        {error, ErrString::binary(), NewState::#pstate{}} |
                        {error, ErrString::binary(), Rest::binary(), NewState::#pstate{}} |
@@ -97,8 +97,6 @@ parse(#pstate{state = undefined} = State, NewData) ->
             return_result(parse_bulk(NewData), State, bulk_continue);
 
         _ ->
-            %% TODO: Handle the case where we start parsing a new
-            %% response, but cannot make any sense of it
             {error, unknown_response}
     end;
 

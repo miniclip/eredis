@@ -43,21 +43,21 @@
 
 -record(state, {
           transport :: eredis:transport(),
-          host :: string() | {local,term()} | undefined,
-          port :: integer() | undefined,
-          password :: binary() | undefined,
-          database :: binary() | undefined,
-          reconnect_sleep :: eredis:reconnect_sleep() | undefined,
-          connect_timeout :: non_neg_integer() | undefined,
+          host :: eredis:host(),
+          port :: 0..65535,
+          password :: undefined | binary(),
+          database :: undefined | binary(),
+          reconnect_sleep :: undefined | eredis:reconnect_sleep(),
+          connect_timeout :: undefined | non_neg_integer(),
 
-          transport_module :: module() | undefined,
-          socket :: gen_tcp:socket() | ssl:sslsocket() | undefined,
+          transport_module :: undefined | module(),
+          socket :: undefined | gen_tcp:socket() | ssl:sslsocket(),
           transport_data_tag :: atom(),
           transport_closure_tag :: atom(),
           transport_error_tag :: atom(),
 
-          parser_state :: #pstate{} | undefined,
-          queue :: eredis_sub:eredis_queue() | undefined
+          parser_state :: undefined | #pstate{},
+          queue :: undefined | eredis_sub:eredis_queue()
 }).
 
 %%
@@ -65,12 +65,12 @@
 %%
 
 -spec start_link(Transport::eredis:transport(),
-                 Host::list(),
-                 Port::integer(),
-                 Database::integer() | undefined,
-                 Password::string(),
+                 Host::eredis:host(),
+                 Port::0..65535,
+                 Database::undefined | pos_integer(),
+                 Password::undefined | string(),
                  ReconnectSleep::eredis:reconnect_sleep(),
-                 ConnectTimeout::non_neg_integer() | undefined) ->
+                 ConnectTimeout::undefined | non_neg_integer()) ->
                         {ok, Pid::pid()} | {error, Reason::term()}.
 start_link(Transport, Host, Port, Database, Password, ReconnectSleep, ConnectTimeout) ->
     Args = [Transport, Host, Port, Database, Password, ReconnectSleep, ConnectTimeout],
@@ -212,8 +212,8 @@ handle_connect(State) ->
             {noreply, State}
     end.
 
--spec do_request(Req::iolist(), From::undefined | pid(), #state{}) ->
-                        {noreply, #state{}} | {reply, Reply::any(), #state{}}.
+-spec do_request(Req::term(), From::undefined | pid(), #state{}) ->
+                        {noreply, #state{}} | {reply, Reply::term() | no_connection, #state{}}.
 %% @doc: Sends the given request to redis. If we do not have a
 %% connection, returns error.
 do_request(_Req, _From, #state{socket = undefined} = State) ->
@@ -229,7 +229,7 @@ do_request(Req, From, State) ->
     end.
 
 -spec do_pipeline(Pipeline::eredis:pipeline(), From::undefined | pid() | {pid(),reference()}, #state{}) ->
-                         {noreply, #state{}} | {reply, Reply::any(), #state{}}.
+                         {noreply, #state{}} | {reply, Reply::term(), #state{}}.
 %% @doc: Sends the entire pipeline to redis. If we do not have a
 %% connection, returns error.
 do_pipeline(_Pipeline, _From, #state{socket = undefined} = State) ->

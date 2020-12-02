@@ -15,18 +15,18 @@
 
 -record(state, {
           transport :: eredis:transport(),
-          host :: string() | undefined,
-          port :: integer() | undefined,
-          password :: binary() | undefined,
-          reconnect_sleep :: integer() | undefined | no_reconnect,
+          host :: undefined | eredis:host(),
+          port :: undefined | 0..65535,
+          password :: undefined | binary(),
+          reconnect_sleep :: undefined | eredis:reconnect_sleep(),
 
-          transport_module :: module() | undefined,
-          socket :: gen_tcp:socket() | ssl:sslsocket() | undefined,
+          transport_module :: undefined | module(),
+          socket :: undefined | gen_tcp:socket() | ssl:sslsocket(),
           transport_data_tag :: atom(),
           transport_closure_tag :: atom(),
           transport_error_tag :: atom(),
 
-          parser_state :: #pstate{} | undefined,
+          parser_state :: undefined | #pstate{},
 
           %% Channels we should subscribe to
           channels = [] :: [eredis_sub:channel()],
@@ -40,7 +40,7 @@
 
           %% When the queue reaches this size, either drop all
           %% messages or exit.
-          max_queue_size :: integer() | inifinity,
+          max_queue_size :: non_neg_integer() | infinity,
           queue_behaviour :: drop | exit,
 
           % The msg_state keeps track of whether we are waiting
@@ -69,11 +69,11 @@
 %%
 
 -spec start_link(Transport::eredis:transport(),
-                 Host::list(),
-                 Port::integer(),
+                 Host::eredis:host(),
+                 Port::0..65535,
                  Password::string(),
                  ReconnectSleep::eredis:reconnect_sleep(),
-                 MaxQueueSize::integer() | infinity,
+                 MaxQueueSize::non_neg_integer() | infinity,
                  QueueBehaviour::drop | exit) ->
                         {ok, Pid::pid()} | {error, Reason::term()}.
 start_link(Transport, Host, Port, Password, ReconnectSleep, MaxQueueSize, QueueBehaviour) ->

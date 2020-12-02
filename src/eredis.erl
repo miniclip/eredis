@@ -48,19 +48,20 @@
 -type transport() :: tcp | ssl.
 -export_type([transport/0]).
 
--type reconnect_sleep() :: no_reconnect | integer().
+-type reconnect_sleep() :: no_reconnect | non_neg_integer().
 -export_type([reconnect_sleep/0]).
+
+-type host() :: string() | {local, binary() | string()}.
+-export_type([host/0]).
 
 -type option() ::
         {transport, transport()} |
-        {host, string()} |
-        {host, {local, term()}} |
-        {port, integer()} |
-        {database, string()} |
-        {database, undefined} |
-        {password, string()} |
-        {reconnect_sleep, reconnect_sleep()} |
-        {connect_timeout, non_neg_integer()}.
+        {host, host()} |
+        {port, 0..65535} |
+        {database, undefined | string()} |
+        {password, undefined | string()} |
+        {reconnect_sleep, undefined | reconnect_sleep()} |
+        {connect_timeout, undefined | non_neg_integer()}.
 -export_type([option/0]).
 
 -type server_args() :: [option()].
@@ -69,18 +70,21 @@
 -type return_value() :: undefined | binary() | [binary() | nonempty_list()].
 -export_type([return_value/0]).
 
--type pipeline() :: [[term()]].
+-type command() :: [term()]. % supports list, atom, binary or integer
+-export_type([command/0]).
+
+-type pipeline() :: [command()].
 -export_type([pipeline/0]).
 
 -export_type([continuation_data/0]). % from eredis.hrl
 -export_type([parser_state/0]). % from eredis.hrl
 
 %% Type of gen_server process id
--type client() :: pid() |
-                  atom() |
-                  {atom(),atom()} |
+-type client() :: (Pid::pid()) |
+                  (Name::atom()) |
+                  {Name::atom(),Node::atom()} |
                   {global,term()} |
-                  {via,atom(),term()}.
+                  {via,module(),term()}.
 -export_type([client/0]).
 
 %%
@@ -169,8 +173,8 @@ start_link(Args) ->
 stop(Client) ->
     eredis_client:stop(Client).
 
--spec q(Client::client(), Command::[any()]) ->
-               {ok, return_value()} | {error, Reason::binary() | no_connection}.
+-spec q(Client::client(), Command::command()) ->
+               {ok, return_value()} | {error, Reason::term() | no_connection}.
 %% @doc: Executes the given command in the specified connection. The
 %% command must be a valid Redis command and may contain arbitrary
 %% data which will be converted to binaries. The returned values will
@@ -195,7 +199,7 @@ qp(Client, Pipeline) ->
 qp(Client, Pipeline, Timeout) ->
     pipeline(Client, Pipeline, Timeout).
 
--spec q_noreply(Client::client(), Command::[any()]) -> ok.
+-spec q_noreply(Client::client(), Command::command()) -> ok.
 %% @doc Executes the command but does not wait for a response and ignores any errors.
 %% @see q/2
 q_noreply(Client, Command) ->
@@ -208,13 +212,13 @@ qp_noreply(Client, Pipeline) ->
     Request = {pipeline, [create_multibulk(Command) || Command <- Pipeline]},
     gen_server:cast(Client, Request).
 
--spec q_async(Client::client(), Command::[any()]) -> {await, Tag::reference()}.
+-spec q_async(Client::client(), Command::command()) -> {await, Tag::reference()}.
 % @doc Executes the command, and sends a message to this process with the response (with either error or success).
 % Message is of the form `{Tag, Reply}', where `Reply' is the reply expected from `q/2'.
 q_async(Client, Command) ->
     q_async(Client, Command, self()).
 
--spec q_async(Client::client(), Command::[any()], Pid::pid()|atom()) -> {await, Tag::reference()}.
+-spec q_async(Client::client(), Command::command(), Pid::pid()|atom()) -> {await, Tag::reference()}.
 %% @doc Executes the command, and sends a message to `Pid' with the response (with either or success).
 %% @see q_async/2
 q_async(Client, Command, Pid) when is_pid(Pid) ->
@@ -255,7 +259,7 @@ cast(Client, Command) ->
     Request = {request, create_multibulk(Command)},
     gen_server:cast(Client, Request).
 
--spec create_multibulk(Args::[any()]) -> Command::[[<<_:8,_:_*8>> | [binary() | [any()] | char()]],...].
+-spec create_multibulk(Args::command()) -> Command::[command(), ...].
 %% @doc: Creates a multibulk command with all the correct size headers
 create_multibulk(Args) ->
     ArgCount = [<<$*>>, integer_to_list(length(Args)), <<?NL>>],

@@ -205,6 +205,7 @@ channels(Client) ->
 %% STUFF FOR TRYING OUT PUBSUB
 %%
 
+-ifdef(TEST).
 receiver(Sub) ->
     receive
         Msg ->
@@ -244,5 +245,5 @@ ppub_example() ->
     {ok, P} = eredis:start_link(),
     {ok, <<_/binary>>} = eredis:q(P, ["PUBLISH", "foo123", "bar"]),
     eredis_client:stop(P).
-
+-endif.
 
