@@ -3,8 +3,6 @@
 -include_lib("eunit/include/eunit.hrl").
 -include("eredis.hrl").
 
--import(eredis, [create_multibulk/1]).
-
 -define(assertReceive(Pattern),
         (fun () -> receive Msg -> ?assertMatch((Pattern), Msg)
                    after 5000 -> exit(timeout)
@@ -160,15 +158,15 @@ c_no_reconnect() ->
 
 multibulk_test_() ->
     [?_assertEqual(<<"*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\nbar\r\n">>,
-                   list_to_binary(create_multibulk(["SET", "foo", "bar"]))),
+                   list_to_binary(eredis:create_multibulk(["SET", "foo", "bar"]))),
      ?_assertEqual(<<"*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\nbar\r\n">>,
-                   list_to_binary(create_multibulk(['SET', foo, bar]))),
+                   list_to_binary(eredis:create_multibulk(['SET', foo, bar]))),
 
      ?_assertEqual(<<"*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\n123\r\n">>,
-                   list_to_binary(create_multibulk(['SET', foo, 123]))),
+                   list_to_binary(eredis:create_multibulk(['SET', foo, 123]))),
 
      ?_assertThrow({cannot_store_floats, 123.5},
-                   list_to_binary(create_multibulk(['SET', foo, 123.5])))
+                   list_to_binary(eredis:create_multibulk(['SET', foo, 123.5])))
     ].
 
 undefined_database_test() ->
@@ -203,6 +201,7 @@ tcp_closed_rig(C) ->
     %% closed. This behavior can be observed when Redis closes an idle
     %% connection just as a traffic burst starts.
     Socket = eredis_client:get_socket(C),
+    timer:sleep(250),
     DoSend = fun(tcp_closed) ->
                      ok = gen_tcp:close(Socket);
                 (Cmd) ->
