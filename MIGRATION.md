@@ -7,9 +7,16 @@ version), required migration instructions will be detailed in this file.
 
 ### Update
 
-- your code to depend on types from `eredis:` and `lhttpc_client:` and not
-(imported) `eredis.hrl` and `eredis_sub.hrl` (a simple `dialyzer` procedure
+- your code to depend on types from `eredis:` and not
+(imported) `eredis.hrl` (a simple `dialyzer` procedure
 should put into evidence what is mis-specified)
+- where you're importing the `eredis.hrl` header and using type `X()`,
+remove the import and use `eredis:X()` instead; do this for types
+`parser_state`, `continuation_data`, and `pstate`
+- your code to not depend on `eredis.hrl` macros
+`NL`, `SOCKET_OPTS`, `TCP_SOCKET_OPTS`, `SSL_SOCKET_OPTS`,
+`RECV_TIMEOUT` or `SEND_TIMEOUT`; copy their content from
+`src/eredis.hrl`
 
 ### Remove
 
