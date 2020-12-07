@@ -1,45 +1,96 @@
-%%
 %% Erlang Redis client
-%%
-%% Usage:
-%%   {ok, Client} = eredis:start_link().
-%%   {ok, <<"OK">>} = eredis:q(Client, ["SET", "foo", "bar"]).
-%%   {ok, <<"bar">>} = eredis:q(Client, ["GET", "foo"]).
-
 -module(eredis).
 -include("eredis.hrl").
 -include("eredis_defaults.hrl").
 
--define(is_host(Host),
+%% ------------------------------------------------------------------
+%% Macro Definitions
+%% ------------------------------------------------------------------
+
+-define(IS_HOST(Host),
         (is_list((Host)) orelse % regular hostname
          (tuple_size((Host)) =:= 2 andalso element(1, (Host)) =:= local))). % UNIX socket
 
--define(is_database(Database),
+-define(IS_DATABASE(Database),
         (is_integer((Database)) orelse (Database) =:= undefined)).
 
--define(is_reconnect_sleep(ReconnectSleep),
-        (is_integer((ReconnectSleep)) orelse (ReconnectSleep) =:= no_reconnect)).
+%% ------------------------------------------------------------------
+%% API Function Exports
+%% ------------------------------------------------------------------
 
 -export([start_link/0, start_link/1, start_link/2, start_link/3, start_link/4,
          start_link/5, start_link/6, start_link/7, stop/1, q/2, q/3, qp/2, qp/3,
          q_noreply/2, qp_noreply/2, q_async/2, q_async/3, qp_async/2, qp_async/3]).
 
-%% Exported for testing
+-ignore_xref(start_link/1).
+-ignore_xref(start_link/2).
+-ignore_xref(start_link/3).
+-ignore_xref(start_link/4).
+-ignore_xref(start_link/5).
+-ignore_xref(start_link/6).
+-ignore_xref(start_link/7).
+-ignore_xref(stop/1).
+-ignore_xref(q/3).
+-ignore_xref(qp/2).
+-ignore_xref(qp/3).
+-ignore_xref(q_noreply/2).
+-ignore_xref(qp_noreply/2).
+-ignore_xref(q_async/2).
+-ignore_xref(q_async/3).
+-ignore_xref(qp_async/2).
+-ignore_xref(qp_async/3).
+
 -export([create_multibulk/1]).
 
+%% ------------------------------------------------------------------
+%% Type Definitions
+%% ------------------------------------------------------------------
+
+-type transport() :: tcp | ssl.
 -export_type([transport/0]).
+
+-type reconnect_sleep() :: no_reconnect | non_neg_integer().
+-export_type([reconnect_sleep/0]).
+
+-type host() :: string() | {local, binary() | string()}.
+-export_type([host/0]).
+
+-type option() ::
+        {transport, transport()} |
+        {host, host()} |
+        {port, 0..65535} |
+        {database, undefined | string()} |
+        {password, undefined | string()} |
+        {reconnect_sleep, undefined | reconnect_sleep()} |
+        {connect_timeout, undefined | non_neg_integer()}.
+-export_type([option/0]).
+
+-type server_args() :: [option()].
+-export_type([server_args/0]).
+
+-type return_value() :: undefined | binary() | [binary() | nonempty_list()].
 -export_type([return_value/0]).
 
-%% Type of gen_server process id
--type client() :: pid() |
-                  atom() |
-                  {atom(),atom()} |
-                  {global,term()} |
-                  {via,atom(),term()}.
+-type command() :: [term()]. % Supports list, atom, binary or integer
+-export_type([command/0]).
 
-%%
-%% PUBLIC API
-%%
+-type pipeline() :: [command()].
+-export_type([pipeline/0]).
+
+-export_type([continuation_data/0]). % from eredis.hrl
+-export_type([parser_state/0]). % from eredis.hrl
+
+%% Type of gen_server process id
+-type client() :: (Pid::pid()) |
+                  (Name::atom()) |
+                  {Name::atom(), Node::atom()} |
+                  {global, term()} |
+                  {via, module(), term()}.
+-export_type([client/0]).
+
+%% ------------------------------------------------------------------
+%% API Function Definitions
+%% ------------------------------------------------------------------
 
 start_link() ->
     start_link([]).
@@ -103,12 +154,12 @@ start_link(Host, Port, Database, Password, ReconnectSleep, ConnectTimeout) ->
      ).
 
 start_link(Transport, Host, Port, Database, Password, ReconnectSleep, ConnectTimeout)
-  when is_atom(Transport), ?is_host(Host), is_integer(Port), ?is_database(Database),
-       is_list(Password), ?is_database(Database), is_integer(ConnectTimeout) ->
+  when is_atom(Transport), ?IS_HOST(Host), is_integer(Port), ?IS_DATABASE(Database),
+       is_list(Password), ?IS_DATABASE(Database), is_integer(ConnectTimeout) ->
     eredis_client:start_link(Transport, Host, Port, Database, Password,
                              ReconnectSleep, ConnectTimeout).
 
-%% @doc: Callback for starting from poolboy
+%% @doc Callback for starting from poolboy
 -spec start_link(server_args()) -> {ok, Pid::pid()} | {error, Reason::term()}.
 start_link(Args) ->
     Transport      = proplists:get_value(transport, Args, ?DEFAULT_TRANSPORT),
@@ -123,9 +174,9 @@ start_link(Args) ->
 stop(Client) ->
     eredis_client:stop(Client).
 
--spec q(Client::client(), Command::[any()]) ->
-               {ok, return_value()} | {error, Reason::binary() | no_connection}.
-%% @doc: Executes the given command in the specified connection. The
+-spec q(Client::client(), Command::command()) ->
+               {ok, return_value()} | {error, Reason::term() | no_connection}.
+%% @doc Executes the given command in the specified connection. The
 %% command must be a valid Redis command and may contain arbitrary
 %% data which will be converted to binaries. The returned values will
 %% always be binaries.
@@ -135,11 +186,10 @@ q(Client, Command) ->
 q(Client, Command, Timeout) ->
     call(Client, Command, Timeout).
 
-
 -spec qp(Client::client(), Pipeline::pipeline()) ->
                 [{ok, return_value()} | {error, Reason::binary()}] |
                 {error, no_connection}.
-%% @doc: Executes the given pipeline (list of commands) in the
+%% @doc Executes the given pipeline (list of commands) in the
 %% specified connection. The commands must be valid Redis commands and
 %% may contain arbitrary data which will be converted to binaries. The
 %% values returned by each command in the pipeline are returned in a list.
@@ -149,7 +199,7 @@ qp(Client, Pipeline) ->
 qp(Client, Pipeline, Timeout) ->
     pipeline(Client, Pipeline, Timeout).
 
--spec q_noreply(Client::client(), Command::[any()]) -> ok.
+-spec q_noreply(Client::client(), Command::command()) -> ok.
 %% @doc Executes the command but does not wait for a response and ignores any errors.
 %% @see q/2
 q_noreply(Client, Command) ->
@@ -162,15 +212,17 @@ qp_noreply(Client, Pipeline) ->
     Request = {pipeline, [create_multibulk(Command) || Command <- Pipeline]},
     gen_server:cast(Client, Request).
 
--spec q_async(Client::client(), Command::[any()]) -> {await, Tag::reference()}.
-% @doc Executes the command, and sends a message to this process with the response (with either error or success).
+-spec q_async(Client::client(), Command::command()) -> {await, Tag::reference()}.
+% @doc Executes the command, and sends a message to this process with the response (with either
+% error or success).
 % Message is of the form `{Tag, Reply}', where `Reply' is the reply expected from `q/2'.
 q_async(Client, Command) ->
     q_async(Client, Command, self()).
 
--spec q_async(Client::client(), Command::[any()], Pid::pid()|atom()) -> {await, Tag::reference()}.
-%% @doc Executes the command, and sends a message to `Pid' with the response (with either or success).
-%% @see 1_async/2
+-spec q_async(Client::client(), Command::command(), Pid::pid()|atom()) -> {await, Tag::reference()}.
+%% @doc Executes the command, and sends a message to `Pid' with the response (with either or
+%% success).
+%% @see q_async/2
 q_async(Client, Command, Pid) when is_pid(Pid) ->
     Tag = make_ref(),
     From = {Pid, Tag},
@@ -179,7 +231,8 @@ q_async(Client, Command, Pid) when is_pid(Pid) ->
     {await, Tag}.
 
 -spec qp_async(Client::client(), Pipeline::pipeline()) -> {await, Tag::reference()}.
-% @doc Executes the pipeline, and sends a message to this process with the response (with either error or success).
+% @doc Executes the pipeline, and sends a message to this process with the response (with either
+% error or success).
 % Message is of the form `{Tag, Reply}', where `Reply' is the reply expected from `qp/2'.
 qp_async(Client, Pipeline) ->
     qp_async(Client, Pipeline, self()).
@@ -191,9 +244,9 @@ qp_async(Client, Pipeline, Pid) when is_pid(Pid) ->
     gen_server:cast(Client, Request),
     {await, Tag}.
 
-%%
-%% INTERNAL HELPERS
-%%
+%% ------------------------------------------------------------------
+%% Internal Function Definitions
+%% ------------------------------------------------------------------
 
 call(Client, Command, Timeout) ->
     Request = {request, create_multibulk(Command)},
@@ -209,8 +262,8 @@ cast(Client, Command) ->
     Request = {request, create_multibulk(Command)},
     gen_server:cast(Client, Request).
 
--spec create_multibulk(Args::[any()]) -> Command::[[<<_:8,_:_*8>> | [binary() | [any()] | char()]],...].
-%% @doc: Creates a multibulk command with all the correct size headers
+-spec create_multibulk(Args::command()) -> Command::[command(), ...].
+%% @doc Creates a multibulk command with all the correct size headers
 create_multibulk(Args) ->
     ArgCount = [<<$*>>, integer_to_list(length(Args)), <<?NL>>],
     ArgsBin = lists:map(fun to_bulk/1, lists:map(fun to_binary/1, Args)),
@@ -220,7 +273,7 @@ create_multibulk(Args) ->
 to_bulk(B) when is_binary(B) ->
     [<<$$>>, integer_to_list(iolist_size(B)), <<?NL>>, B, <<?NL>>].
 
-%% @doc: Convert given value to binary. Fallbacks to
+%% @doc Convert given value to binary. Fallbacks to
 %% term_to_binary/1. For floats, throws {cannot_store_floats, Float}
 %% as we do not want floats to be stored in Redis. Your future self
 %% will thank you for this.

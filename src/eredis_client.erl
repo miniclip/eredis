@@ -1,73 +1,67 @@
+%% @hidden
 %%
-%% eredis_client
-%%
-%% The client is implemented as a gen_server which keeps one socket
-%% open to a single Redis instance. Users call us using the API in
+%% The client is implemented as a gen_server which keeps a socket
+%% open to a single Redis instance. Users call it using the API in
 %% eredis.erl.
 %%
 %% The client works like this:
-%%  * When starting up, we connect to Redis with the given connection
-%%     information, or fail.
-%%  * Users calls us using gen_server:call, we send the request to Redis,
-%%    add the calling process at the end of the queue and reply with
-%%    noreply. We are then free to handle new requests and may reply to
+%%  * When starting up, it connects to Redis with the given connection
+%%     information, or fails.
+%%  * Users call it using gen_server:call, it sends the request to Redis,
+%%    adds the calling process at the end of the queue and replies with
+%%    noreply. It is then free to handle new requests and may reply to
 %%    the user later.
-%%  * We receive data on the socket, we parse the response and reply to
+%%  * It receives data on the socket, it parses the response and replies to
 %%    the client at the front of the queue. If the parser does not have
-%%    enough data to parse the complete response, we will wait for more
+%%    enough data to parse the complete response, it will wait for more
 %%    data to arrive.
-%%  * For pipeline commands, we include the number of responses we are
+%%  * For pipeline commands, it includes the number of responses it is
 %%    waiting for in each element of the queue. Responses are queued until
-%%    we have all the responses we need and then reply with all of them.
-%%
+%%    it has all the responses it needs and then replies with all of them.
 -module(eredis_client).
 -behaviour(gen_server).
 -include("eredis.hrl").
 
-%% API
 -export([start_link/7, stop/1]).
 
-%% proc_lib callbacks
 -export([init/2]). -ignore_xref([init/2]).
 
-%% gen_server callbacks
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
 -ifdef(TEST).
 -export([get_socket/1]).
+
+-ignore_xref(get_socket/1).
 -endif.
 
 -record(state, {
-          transport :: transport(),
-          host :: string() | {local,term()} | undefined,
-          port :: integer() | undefined,
-          password :: binary() | undefined,
-          database :: binary() | undefined,
-          reconnect_sleep :: reconnect_sleep() | undefined,
-          connect_timeout :: non_neg_integer() | undefined,
+          transport :: eredis:transport(),
+          host :: eredis:host(),
+          port :: 0..65535,
+          password :: undefined | binary(),
+          database :: undefined | binary(),
+          reconnect_sleep :: undefined | eredis:reconnect_sleep(),
+          connect_timeout :: undefined | non_neg_integer(),
 
-          transport_module :: module() | undefined,
-          socket :: gen_tcp:socket() | ssl:sslsocket() | undefined,
+          transport_module :: undefined | module(),
+          socket :: undefined | gen_tcp:socket() | ssl:sslsocket(),
           transport_data_tag :: atom(),
           transport_closure_tag :: atom(),
           transport_error_tag :: atom(),
 
-          parser_state :: #pstate{} | undefined,
-          queue :: eredis_queue() | undefined
+          parser_state :: undefined | #pstate{},
+          queue :: undefined | eredis_sub:eredis_queue()
 }).
+-type state() :: #state{}.
 
-%%
-%% API
-%%
-
--spec start_link(Transport::transport(),
-                 Host::list(),
-                 Port::integer(),
-                 Database::integer() | undefined,
-                 Password::string(),
-                 ReconnectSleep::reconnect_sleep(),
-                 ConnectTimeout::non_neg_integer() | undefined) ->
+-spec start_link(Transport::eredis:transport(),
+                 Host::eredis:host(),
+                 Port::0..65535,
+                 Database::undefined | pos_integer(),
+                 Password::undefined | string(),
+                 ReconnectSleep::eredis:reconnect_sleep(),
+                 ConnectTimeout::undefined | non_neg_integer()) ->
                         {ok, Pid::pid()} | {error, Reason::term()}.
 start_link(Transport, Host, Port, Database, Password, ReconnectSleep, ConnectTimeout) ->
     Args = [Transport, Host, Port, Database, Password, ReconnectSleep, ConnectTimeout],
@@ -81,10 +75,6 @@ get_socket(Pid) ->
     State = sys:get_state(Pid),
     State#state.socket.
 -endif.
-
-%%====================================================================
-%% proc_lib callbacks
-%%====================================================================
 
 init(ParentPid, [Transport, Host, Port, Database, Password, ReconnectSleep, ConnectTimeout])
   when Transport =:= tcp;
@@ -103,16 +93,12 @@ init(ParentPid, [Transport, Host, Port, Database, Password, ReconnectSleep, Conn
 
     case ReconnectSleep =:= no_reconnect of
         true ->
-            connect_on_init(ParentPid,State);
+            connect_on_init(ParentPid, State);
         false ->
             proc_lib:init_ack(ParentPid, {ok, self()}),
             self() ! connect,
             gen_server:enter_loop(?MODULE, [], State)
     end.
-
-%%====================================================================
-%% gen_server callbacks
-%%====================================================================
 
 init(_) ->
     ignore.
@@ -172,18 +158,14 @@ handle_info(connect, #state{socket = undefined} = State) ->
     handle_connect(State);
 handle_info(stop, State) ->
     {stop, shutdown, State};
-handle_info(_Info, State) ->
-    {stop, {unhandled_message, _Info}, State}.
+handle_info(Info, State) ->
+    {stop, {unhandled_message, Info}, State}.
 
 terminate(_Reason, _State) ->
     ok.
 
 code_change(_OldVsn, State, _Extra) ->
     {ok, State}.
-
-%%--------------------------------------------------------------------
-%%% Internal functions
-%%--------------------------------------------------------------------
 
 connect_on_init(ParentPid, State) ->
     case handle_connect(State) of
@@ -209,13 +191,12 @@ handle_connect(State) ->
             {noreply, State}
     end.
 
--spec do_request(Req::iolist(), From::undefined | pid(), #state{}) ->
-                        {noreply, #state{}} | {reply, Reply::any(), #state{}}.
-%% @doc: Sends the given request to redis. If we do not have a
+-spec do_request(Req::term(), From::undefined | pid(), state()) ->
+                        {noreply, state()} | {reply, Reply::term() | no_connection, state()}.
+%% Sends the given request to redis. If we do not have a
 %% connection, returns error.
 do_request(_Req, _From, #state{socket = undefined} = State) ->
     {reply, {error, no_connection}, State};
-
 do_request(Req, From, State) ->
     case (State#state.transport_module):send(State#state.socket, Req) of
         ok ->
@@ -225,13 +206,13 @@ do_request(Req, From, State) ->
             {reply, {error, Reason}, State}
     end.
 
--spec do_pipeline(Pipeline::pipeline(), From::undefined | pid() | {pid(),reference()}, #state{}) ->
-                         {noreply, #state{}} | {reply, Reply::any(), #state{}}.
-%% @doc: Sends the entire pipeline to redis. If we do not have a
+-spec do_pipeline(Pipeline::eredis:pipeline(), From::undefined | pid() | {pid(), reference()},
+                  state()) ->
+                         {noreply, state()} | {reply, Reply::term(), state()}.
+%% Sends the entire pipeline to redis. If we do not have a
 %% connection, returns error.
 do_pipeline(_Pipeline, _From, #state{socket = undefined} = State) ->
     {reply, {error, no_connection}, State};
-
 do_pipeline(Pipeline, From, State) ->
     case (State#state.transport_module):send(State#state.socket, Pipeline) of
         ok ->
@@ -241,8 +222,8 @@ do_pipeline(Pipeline, From, State) ->
             {reply, {error, Reason}, State}
     end.
 
--spec handle_response(Data::binary(), State::#state{}) -> NewState::#state{}.
-%% @doc: Handle the response coming from Redis. This includes parsing
+-spec handle_response(Data::binary(), State::state()) -> NewState::state().
+%% Handle the response coming from Redis. This includes parsing
 %% and replying to the correct client, handling partial responses,
 %% handling too much data and handling continuations.
 handle_response(Data, #state{parser_state = ParserState,
@@ -254,14 +235,12 @@ handle_response(Data, #state{parser_state = ParserState,
             NewQueue = reply({ReturnCode, Value}, Queue),
             State#state{parser_state = NewParserState,
                         queue = NewQueue};
-
         %% Got complete response, with extra data, reply to client and
         %% recurse over the extra data
         {ReturnCode, Value, Rest, NewParserState} ->
             NewQueue = reply({ReturnCode, Value}, Queue),
             handle_response(Rest, State#state{parser_state = NewParserState,
                                               queue = NewQueue});
-
         %% Parser needs more data, the parser state now contains the
         %% continuation data and we will try calling parse again when
         %% we have more data
@@ -269,7 +248,7 @@ handle_response(Data, #state{parser_state = ParserState,
             State#state{parser_state = NewParserState}
     end.
 
-%% @doc: Sends a value to the first client in queue. Returns the new
+%% Sends a value to the first client in queue. Returns the new
 %% queue without this client. If we are still waiting for parts of a
 %% pipelined request, push the reply to the the head of the queue and
 %% wait for another reply from redis.
@@ -289,7 +268,7 @@ reply(Value, Queue) ->
             exit(empty_queue)
     end.
 
-%% @doc Send `Value' to each client in queue. Only useful for sending
+%% Send `Value' to each client in queue. Only useful for sending
 %% an error message. Any in-progress reply data is ignored.
 reply_all(Value, Queue) ->
     case queue:peek(Queue) of
@@ -316,10 +295,11 @@ safe_send(Pid, Value) ->
     try erlang:send(Pid, Value)
     catch
         Err:Reason ->
-            error_logger:info_msg("eredis: Failed to send message to ~p with reason ~p~n", [Pid, {Err, Reason}])
+            error_logger:info_msg("eredis: Failed to send message to ~p with reason ~p~n",
+                                  [Pid, {Err, Reason}])
     end.
 
-%% @doc: Helper for connecting to Redis, authenticating and selecting
+%% Helper for connecting to Redis, authenticating and selecting
 %% the correct database. These commands are synchronous and if Redis
 %% returns something we don't expect, we crash. Returns {ok, State} or
 %% {SomeError, Reason}.
@@ -378,8 +358,8 @@ get_addr({local, Path}) ->
     {ok, {local, {local, Path}}};
 get_addr(Hostname) ->
     case inet:parse_address(Hostname) of
-        {ok, {_,_,_,_} = Addr} ->         {ok, {inet, Addr}};
-        {ok, {_,_,_,_,_,_,_,_} = Addr} -> {ok, {inet6, Addr}};
+        {ok, {_, _, _, _} = Addr} ->         {ok, {inet, Addr}};
+        {ok, {_, _, _, _, _, _, _, _} = Addr} -> {ok, {inet6, Addr}};
         {error, einval} ->
             case inet:getaddr(Hostname, inet6) of
                  {error, _} ->
@@ -406,7 +386,7 @@ authenticate(State) ->
     Password = State#state.password,
     do_sync_command(["AUTH", " \"", Password, "\"\r\n"], State).
 
-%% @doc: Executes the given command synchronously, expects Redis to
+%% Executes the given command synchronously, expects Redis to
 %% return "+OK\r\n", otherwise it will fail.
 do_sync_command(Command, State) ->
     _ = set_socket_opts([{active, false}], State),

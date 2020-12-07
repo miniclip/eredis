@@ -1,0 +1,31 @@
+---
+name: CI for eredis
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
+jobs:
+  ci:
+    name: Run checks and tests over ${{matrix.otp_vsn}}, ${{matrix.redis_vsn}} and ${{matrix.os}}
+    runs-on: ${{matrix.os}}
+    services:
+      redis:
+        image: ${{matrix.redis_vsn}}
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+    strategy:
+      matrix:
+        otp_vsn: [19.3, 20.3, 21.3, 22.3, 23.1]
+        os: [ubuntu-latest]
+        redis_vsn: ["redis:4", "redis:5", "redis:6"]
+    steps:
+      - uses: actions/checkout@v2
+      - run: make version

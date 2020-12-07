@@ -1,26 +1,77 @@
 %%
-%% Erlang PubSub Redis client
+%% Erlang Redis Pub/Sub client
 %%
 -module(eredis_sub).
 -include("eredis.hrl").
 -include("eredis_defaults.hrl").
 
+%% ------------------------------------------------------------------
+%% API Function Exports
+%% ------------------------------------------------------------------
+
 -export([start_link/0, start_link/1, start_link/3, start_link/4, start_link/6, start_link/7,
          stop/1, controlling_process/1, controlling_process/2, controlling_process/3,
          ack_message/1, subscribe/2, unsubscribe/2, channels/1]).
 
--export([psubscribe/2,punsubscribe/2]).
+-export([psubscribe/2, punsubscribe/2]).
 
+-ignore_xref(start_link/0).
+-ignore_xref(start_link/1).
+-ignore_xref(start_link/3).
+-ignore_xref(start_link/4).
+-ignore_xref(start_link/6).
+-ignore_xref(start_link/7).
+-ignore_xref(stop/1).
+-ignore_xref(controlling_process/1).
+-ignore_xref(controlling_process/2).
+-ignore_xref(controlling_process/3).
+-ignore_xref(ack_message/1).
+-ignore_xref(subscribe/2).
+-ignore_xref(unsubscribe/2).
+-ignore_xref(channels/1).
+-ignore_xref(psubscribe/2).
+-ignore_xref(punsubscribe/2).
+
+-ifdef(TEST).
 -export([receiver/1, sub_example/0, pub_example/0]).
 
--export([psub_example/0,ppub_example/0]).
+-export([psub_example/0, ppub_example/0]).
+
+-ignore_xref(sub_example/0).
+-ignore_xref(pub_example/0).
+-ignore_xref(psub_example/0).
+-ignore_xref(ppub_example/0).
+-endif.
+
+%% ------------------------------------------------------------------
+%% Macro Definitions
+%% ------------------------------------------------------------------
 
 -define(DEFAULT_MAX_QUEUE_SIZE, infinity).
 -define(DEFAULT_QUEUE_BEHAVIOUR, drop).
 
-%%
-%% PUBLIC API
-%%
+%% ------------------------------------------------------------------
+%% Type Definitions
+%% ------------------------------------------------------------------
+
+-type sub_option() ::
+        eredis:option() |
+        {max_queue_size, non_neg_integer() | infinity} |
+        {queue_behaviour, drop | exit}.
+-export_type([sub_option/0]).
+
+-type sub_args() :: [sub_option()].
+-export_type([sub_args/0]).
+
+-type channel() :: binary().
+-export_type([channel/0]).
+
+-type eredis_queue() :: queue:queue().
+-export_type([eredis_queue/0]).
+
+%% ------------------------------------------------------------------
+%% API Function Definitions
+%% ------------------------------------------------------------------
 
 start_link() ->
     start_link([]).
@@ -58,8 +109,7 @@ start_link(Transport, Host, Port, Password, ReconnectSleep,
     eredis_sub_client:start_link(Transport, Host, Port, Password, ReconnectSleep,
                                  MaxQueueSize, QueueBehaviour).
 
-
-%% @doc: Callback for starting from poolboy
+%% @doc Callback for starting from poolboy
 -spec start_link(sub_args()) -> {ok, Pid::pid()} | {error, Reason::term()}.
 start_link(Args) ->
     Transport      = proplists:get_value(transport, Args, ?DEFAULT_TRANSPORT),
@@ -75,9 +125,8 @@ start_link(Args) ->
 stop(Pid) ->
     eredis_sub_client:stop(Pid).
 
-
 -spec controlling_process(Client::pid()) -> ok.
-%% @doc: Make the calling process the controlling process. The
+%% @doc Make the calling process the controlling process. The
 %% controlling process received pubsub-related messages, of which
 %% there are three kinds. In each message, the pid refers to the
 %% eredis client process.
@@ -114,38 +163,34 @@ controlling_process(Client) ->
     controlling_process(Client, self()).
 
 -spec controlling_process(Client::pid(), Pid::pid()) -> ok.
-%% @doc: Make the given process (pid) the controlling process.
+%% @doc Make the given process (pid) the controlling process.
 controlling_process(Client, Pid) ->
     controlling_process(Client, Pid, ?TIMEOUT).
 
-%% @doc: Make the given process (pid) the controlling process subscriber
+%% @doc Make the given process (pid) the controlling process subscriber
 %% with the given Timeout.
 controlling_process(Client, Pid, Timeout) ->
     gen_server:call(Client, {controlling_process, Pid}, Timeout).
 
-
 -spec ack_message(Client::pid()) -> ok.
-%% @doc: acknowledge the receipt of a pubsub message. each pubsub
+%% @doc acknowledge the receipt of a pubsub message. each pubsub
 %% message must be acknowledged before the next one is received
 ack_message(Client) ->
     gen_server:cast(Client, {ack_message, self()}).
 
-
-%% @doc: Subscribe to the given channels. Returns immediately. The
+%% @doc Subscribe to the given channels. Returns immediately. The
 %% result will be delivered to the controlling process as any other
 %% message. Delivers {subscribed, Channel::binary(), pid()}
 -spec subscribe(pid(), [channel()]) -> ok.
 subscribe(Client, Channels) ->
     gen_server:cast(Client, {subscribe, self(), Channels}).
 
-%% @doc: Pattern subscribe to the given channels. Returns immediately. The
+%% @doc Pattern subscribe to the given channels. Returns immediately. The
 %% result will be delivered to the controlling process as any other
 %% message. Delivers {subscribed, Channel::binary(), pid()}
 -spec psubscribe(pid(), [channel()]) -> ok.
 psubscribe(Client, Channels) ->
     gen_server:cast(Client, {psubscribe, self(), Channels}).
-
-
 
 unsubscribe(Client, Channels) ->
     gen_server:cast(Client, {unsubscribe, self(), Channels}).
@@ -153,23 +198,21 @@ unsubscribe(Client, Channels) ->
 punsubscribe(Client, Channels) ->
     gen_server:cast(Client, {punsubscribe, self(), Channels}).
 
-%% @doc: Returns the channels the given client is currently
+%% @doc Returns the channels the given client is currently
 %% subscribing to. Note: this list is based on the channels at startup
 %% and any channel added during runtime. It might not immediately
 %% reflect the channels Redis thinks the client is subscribed to.
 channels(Client) ->
     gen_server:call(Client, get_channels).
 
+%% ------------------------------------------------------------------
+%% "Internal" Function Definitions
+%% ------------------------------------------------------------------
 
-
-%%
-%% STUFF FOR TRYING OUT PUBSUB
-%%
-
+-ifdef(TEST).
 receiver(Sub) ->
     receive
-        Msg ->
-            io:format("received ~p~n", [Msg]),
+        _Msg ->
             ack_message(Sub),
             ?MODULE:receiver(Sub)
     end.
@@ -201,5 +244,4 @@ ppub_example() ->
     {ok, P} = eredis:start_link(),
     {ok, <<_/binary>>} = eredis:q(P, ["PUBLISH", "foo123", "bar"]),
     eredis_client:stop(P).
-
-
+-endif.

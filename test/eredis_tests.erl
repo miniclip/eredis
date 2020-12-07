@@ -3,9 +3,7 @@
 -include_lib("eunit/include/eunit.hrl").
 -include("eredis.hrl").
 
--import(eredis, [create_multibulk/1]).
-
--define(assertReceive(Pattern),
+-define(ASSERT_RECEIVE(Pattern),
         (fun () -> receive Msg -> ?assertMatch((Pattern), Msg)
                    after 5000 -> exit(timeout)
                    end
@@ -22,7 +20,6 @@ get_set_test() ->
     ?assertEqual({ok, undefined}, eredis:q(C, ["GET", foo])),
     ?assertEqual({ok, <<"OK">>}, eredis:q(C, ["SET", foo, bar])),
     ?assertEqual({ok, <<"bar">>}, eredis:q(C, ["GET", foo])).
-
 
 delete_test() ->
     C = c(),
@@ -140,17 +137,15 @@ qp_async_test() ->
     {await, Tag1} = eredis:qp_async(C, [["SET", foo, 1]]),
     {await, Tag2} = eredis:qp_async(C, [["INCR", foo], ["INCR", foo]]),
     {await, Tag3} = eredis:qp_async(C, [["DEL", foo], ["INCR", foo]]),
-    ?assertReceive({Tag1, [{ok, <<"OK">>}]}),
-    ?assertReceive({Tag2, [{ok, <<"2">>}, {ok, <<"3">>}]}),
-    ?assertReceive({Tag3, [{ok, <<"1">>}, {ok, <<"1">>}]}).
+    ?ASSERT_RECEIVE({Tag1, [{ok, <<"OK">>}]}),
+    ?ASSERT_RECEIVE({Tag2, [{ok, <<"2">>}, {ok, <<"3">>}]}),
+    ?ASSERT_RECEIVE({Tag3, [{ok, <<"1">>}, {ok, <<"1">>}]}).
 
 c() ->
     Res = eredis:start_link(),
     ?assertMatch({ok, _}, Res),
     {ok, C} = Res,
     C.
-
-
 
 c_no_reconnect() ->
     Res = eredis:start_link("127.0.0.1", 6379, 0, "", no_reconnect),
@@ -160,19 +155,19 @@ c_no_reconnect() ->
 
 multibulk_test_() ->
     [?_assertEqual(<<"*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\nbar\r\n">>,
-                   list_to_binary(create_multibulk(["SET", "foo", "bar"]))),
+                   list_to_binary(eredis:create_multibulk(["SET", "foo", "bar"]))),
      ?_assertEqual(<<"*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\nbar\r\n">>,
-                   list_to_binary(create_multibulk(['SET', foo, bar]))),
+                   list_to_binary(eredis:create_multibulk(['SET', foo, bar]))),
 
      ?_assertEqual(<<"*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\n123\r\n">>,
-                   list_to_binary(create_multibulk(['SET', foo, 123]))),
+                   list_to_binary(eredis:create_multibulk(['SET', foo, 123]))),
 
      ?_assertThrow({cannot_store_floats, 123.5},
-                   list_to_binary(create_multibulk(['SET', foo, 123.5])))
+                   list_to_binary(eredis:create_multibulk(['SET', foo, 123.5])))
     ].
 
 undefined_database_test() ->
-    ?assertMatch({ok,_}, eredis:start_link("localhost", 6379, undefined)).
+    ?assertMatch({ok, _}, eredis:start_link("localhost", 6379, undefined)).
 
 connection_failure_during_start_no_reconnect_test() ->
     process_flag(trap_exit, false),
@@ -203,6 +198,7 @@ tcp_closed_rig(C) ->
     %% closed. This behavior can be observed when Redis closes an idle
     %% connection just as a traffic burst starts.
     Socket = eredis_client:get_socket(C),
+    timer:sleep(250),
     DoSend = fun(tcp_closed) ->
                      ok = gen_tcp:close(Socket);
                 (Cmd) ->
