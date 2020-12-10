@@ -1,5 +1,5 @@
 ---
-name: CI for eredis
+name: build
 on:
   push:
     branches:
