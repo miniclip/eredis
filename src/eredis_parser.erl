@@ -253,8 +253,7 @@ buffer_append({List, Size}, Binary) ->
   end,
   {NewList, Size + byte_size(Binary)}.
 
-buffer_hd({[<<Char, _/binary>> | _], _}) -> [Char];
-buffer_hd({[], _}) -> [].
+buffer_hd({[<<Char, _/binary>> | _], _}) -> [Char].
 
 buffer_tl({[<<_, RestBin/binary>> | Rest], Size}) -> {[RestBin | Rest], Size - 1}.
 
