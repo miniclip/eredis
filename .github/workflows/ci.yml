@@ -11,6 +11,8 @@ jobs:
   ci:
     name: Run checks and tests over ${{matrix.otp_vsn}}, ${{matrix.redis_vsn}} and ${{matrix.os}}
     runs-on: ${{matrix.os}}
+    container:
+      image: erlang:${{matrix.otp_vsn}}
     services:
       redis:
         image: ${{matrix.redis_vsn}}
