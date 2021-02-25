@@ -8,11 +8,8 @@ MAKEFLAGS += --no-builtin-rules
 version: upgrade clean compile check test edoc
 .PHONY: version
 
-shell:
-	@rebar3 shell
-.PHONY: shell
-
 upgrade: upgrade-rebar3_lint
+	@rebar3 do unlock,upgrade
 .PHONY: upgrade
 
 upgrade-rebar3_lint:
@@ -43,6 +40,7 @@ elvis-rock:
 .PHONY: elvis-rock
 
 test: eunit cover
+.NOTPARALLEL: test
 .PHONY: test
 
 eunit:

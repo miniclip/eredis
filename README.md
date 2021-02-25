@@ -1,10 +1,7 @@
-# eredis
+# eredis [![GitHub Actions CI][ci-img]][ci]
 
-![build](https://github.com/miniclip/eredis/workflows/build/badge.svg)
-[![erlang][erlang badge]][erlang downloads]
-
-[erlang badge]: https://img.shields.io/badge/erlang-%3E%3D19.3-lightgrey
-[erlang downloads]: http://www.erlang.org/download
+[ci]: https://github.com/miniclip/eredis
+[ci-img]: https://github.com/miniclip/eredis/workflows/build/badge.svg
 
 Non-blocking Redis client with focus on performance and robustness.
 
