@@ -427,7 +427,8 @@ handle_socket_removal(Reason, State) ->
         ReconnectSleep ->
             flush_socket_messages(State),
             _ = erlang:send_after(ReconnectSleep, self(), connect),
-            NewState = State#state{ socket = undefined },
+            NewState = State#state{ socket = undefined,
+                                    queue = queue:new()},
             {noreply, NewState}
     end.
 
