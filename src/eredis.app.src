@@ -1,6 +1,16 @@
-{application,eredis,
-             [{description,"Erlang Redis Client"},
-              {vsn,git},
-              {registered,[]},
-              {applications,[kernel,stdlib,ssl,tls_certificate_check]},
-              {licenses,["MIT"]}]}.
+{application, eredis, [
+    {description, "Erlang Redis Client"},
+    {vsn, git},
+    {registered, []},
+
+    {applications, [
+        % OTP dependencies
+        kernel,
+        ssl,
+        stdlib,
+        % External dependencies
+        tls_certificate_check
+    ]},
+
+    {env, []}
+]}.

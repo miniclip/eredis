@@ -9,6 +9,8 @@
 -include("eredis.hrl").
 -include_lib("eunit/include/eunit.hrl").
 
+-elvis([{elvis_text_style, line_length, disable}]).
+
 % parse a binary one byte at a time
 one_byte_parse(B) ->
     one_byte_parse(eredis_parser:init(), B).
@@ -121,7 +123,8 @@ bulk_split_on_newline_test() ->
 
 bulk_nil_test() ->
     B = <<"$-1\r\n">>,
-    ?assertEqual({ok, undefined, eredis_parser:init()}, eredis_parser:parse(eredis_parser:init(), B)).
+    ?assertEqual({ok, undefined, eredis_parser:init()},
+                 eredis_parser:parse(eredis_parser:init(), B)).
 
 bulk_nil_chunked_test() ->
     State1 = eredis_parser:init(),
@@ -138,7 +141,8 @@ bulk_nil_chunked_test() ->
 
 bulk_nil_with_extra_test() ->
     B = <<"$-1\r\n$3\r\nfoo\r\n">>,
-    ?assertEqual({ok, undefined, <<"$3\r\nfoo\r\n">>, eredis_parser:init()}, eredis_parser:parse(eredis_parser:init(), B)).
+    ?assertEqual({ok, undefined, <<"$3\r\nfoo\r\n">>, eredis_parser:init()},
+                 eredis_parser:parse(eredis_parser:init(), B)).
 
 bulk_crap_test() ->
     B = <<"\r\n">>,
@@ -152,7 +156,8 @@ multibulk_test() ->
 multibulk_parse_test() ->
     %% [{1, 1}, {2, 2}, {3, 3}]
     B = <<"*3\r\n$1\r\n1\r\n$1\r\n2\r\n$1\r\n3\r\n">>,
-    ?assertEqual({ok, [<<"1">>, <<"2">>, <<"3">>], #pstate{}}, eredis_parser:parse(eredis_parser:init(), B)).
+    ?assertEqual({ok, [<<"1">>, <<"2">>, <<"3">>], #pstate{}},
+                 eredis_parser:parse(eredis_parser:init(), B)).
 
 multibulk_one_byte_parse_test() ->
     %% [{1, 1}, {2, 2}, {3, 3}]
@@ -231,7 +236,8 @@ multibulk_newline_split_test() ->
 
     {continue, ContinuationData1} = eredis_parser:parse_multibulk(B1),
 
-    ?assertEqual({ok, [<<"1">>, <<"2">>], <<>>}, eredis_parser:parse_multibulk(ContinuationData1, B2)).
+    ?assertEqual({ok, [<<"1">>, <<"2">>], <<>>},
+                 eredis_parser:parse_multibulk(ContinuationData1, B2)).
 
 multibulk_nil_test() ->
     B = <<"*-1\r\n">>,

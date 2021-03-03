@@ -18,7 +18,7 @@ jobs:
           - 127.0.0.1:6379:6379/tcp
     strategy:
       matrix:
-        otp_vsn: [19.3.6.13, 20.3.8.26, 21.3.8.17, 22.3.4.9, 23.1.5]
+        otp_vsn: [21.3.8.17, 22.3.4.9, 23.1.5]
         os: [ubuntu-latest]
         redis_vsn:
           - redis:4

@@ -7,13 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `elvis`-based style analysis [Paulo Oliveira]
+
 ### Changed
 
-- exported types to be so by the module that concerns them
+- exported types to be so by the module that concerns them [Paulo Oliveira]
+- Makefile to something more usable [Paulo Oliveira]
+- CI from Travis to GitHub Actions [Paulo Oliveira]
+- `rebar.config` to something more maintainable [Paulo Oliveira]
 
 ### Removed
 
-- `include/`
+- `include/` [Paulo Oliveira]
+- `Emakefile.src` [Paulo Oliveira]
+- `mix.exs` [Paulo Oliveira]
 
 ### PREVIOUS LOG FORMAT FOLLOWS
 

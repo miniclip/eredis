@@ -1,7 +1,7 @@
 # Migration guide
 
-Whenever there's an interface breaking change (a change in the project's major
-version), required migration instructions will be detailed in this file.
+Whenever there's an interface breaking change (a change in the project's major version),
+required migration instructions will be detailed in this file.
 
 ## From [2.x] to [3.x]
 
