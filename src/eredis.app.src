@@ -2,6 +2,9 @@
     {description, "Erlang Redis Client"},
     {vsn, git},
     {registered, []},
+    {pkg_name, mc_eredis},
+    {licenses, ["The MIT License"]},
+    {links, [{"GitHub", "https://github.com/miniclip/eredis"}]},
 
     {applications, [
         % OTP dependencies
