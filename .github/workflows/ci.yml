@@ -19,7 +19,7 @@ jobs:
     strategy:
       matrix:
         otp_vsn: [21.3.8.17, 22.3.4.9, 23.1.5]
-        os: [ubuntu-latest]
+        os: [ubuntu-18.04]
         redis_vsn:
           - redis:4
           - redis:5
