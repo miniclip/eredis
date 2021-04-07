@@ -18,7 +18,7 @@ jobs:
           - 127.0.0.1:6379:6379/tcp
     strategy:
       matrix:
-        otp_vsn: [21.3.8.17, 22.3.4.9, 23.1.5]
+        otp_vsn: [21, 22, 23]
         os: [ubuntu-18.04]
         redis_vsn:
           - redis:4
@@ -26,7 +26,8 @@ jobs:
           - redis:6
     steps:
       - uses: actions/checkout@v2
-      - uses: gleam-lang/setup-erlang@v1.0.0
+      - uses: erlef/setup-beam@v1.7.0
         with:
           otp-version: ${{matrix.otp_vsn}}
+          rebar3-version: '3.14'
       - run: make version
