@@ -14,6 +14,9 @@
 -define(IS_DATABASE(Database),
         (is_integer((Database)) orelse (Database) =:= undefined)).
 
+-define(DEFAULT_DATABASE, 0).
+-define(DEFAULT_CONNECT_TIMEOUT, ?TIMEOUT).
+
 %% ------------------------------------------------------------------
 %% API Function Exports
 %% ------------------------------------------------------------------
