@@ -327,11 +327,11 @@ connect(State) ->
     end.
 
 transport_params(State) when State#state.transport =:= tcp ->
-    {gen_tcp, ?TCP_SOCKET_OPTS,
+    {gen_tcp, ?COMMON_SOCKET_OPTS,
      tcp, tcp_closed, tcp_error};
 transport_params(State) when State#state.transport =:= ssl ->
     Host = State#state.host,
-    ConnectOpts = ?SSL_SOCKET_OPTS ++ tls_certificate_check:options(Host),
+    ConnectOpts = ?COMMON_SOCKET_OPTS ++ tls_certificate_check:options(Host),
     {ssl, ConnectOpts,
      ssl, ssl_closed, ssl_error}.
 

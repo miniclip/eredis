@@ -345,12 +345,12 @@ transport_params(State) when State#state.transport =:= tcp ->
             local -> 0;
             _ -> State#state.port
         end,
-    {gen_tcp, Addr, Port, [AFamily | ?TCP_SOCKET_OPTS],
+    {gen_tcp, Addr, Port, [AFamily | ?COMMON_SOCKET_OPTS],
      tcp, tcp_closed, tcp_error};
 transport_params(State) when State#state.transport =:= ssl ->
     Host = State#state.host,
     Port = State#state.port,
-    ConnectOpts = ?SSL_SOCKET_OPTS ++ tls_certificate_check:options(Host),
+    ConnectOpts = ?COMMON_SOCKET_OPTS ++ tls_certificate_check:options(Host),
     {ssl, Host, Port, ConnectOpts,
      ssl, ssl_closed, ssl_error}.
 
