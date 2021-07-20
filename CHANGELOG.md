@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - CI container approach to `setup-beam` with cache [Paulo Oliveira]
+- CA bundles, to base them on the latest Mozilla Included CA Certificate List [Guilherme Andrade]
 
 ## [2.4.2] - 2021-03-15
 
