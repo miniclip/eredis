@@ -3,7 +3,8 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
+except for the 2.4.0 release.
 
 ## [2.6.0] - 2021-09-16
 
@@ -44,7 +45,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - unused dep `parse_trans` [Paulo Oliveira]
 
-## [2.4.0] - 2021-03-04
+## [2.4.0] - 2021-03-04 (**breaking changes, it should have been 3.0.0**)
 
 ### Added
 
