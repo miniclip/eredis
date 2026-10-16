@@ -6,6 +6,23 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 except for the 2.4.0 release.
 
+## [Unreleased]
+
+### Changed
+
+- [dep.] `tls_certificate_check` from 1.9.0 to 1.35.0 [Sérgio Almeida]
+- `elvis.config` to the `elvis_core` 6.x format [Sérgio Almeida]
+- code style to comply with `elvis_core` 6.x [Sérgio Almeida]
+
+### Fixed
+
+- `catch` in `eredis_sub_client`'s reconnect loop, now a `try ... catch` [Sérgio Almeida]
+- `eredis:q_async/3` spec, which wrongly claimed to accept an `atom()` destination [Sérgio Almeida]
+
+### Removed
+
+- compatibility with OTP 22 to 25 [Sérgio Almeida]
+
 ## [2.6.2] - 2022-04-19
 
 ### Added

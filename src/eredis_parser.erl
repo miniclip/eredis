@@ -19,6 +19,8 @@
 
 -export([init/0, parse/2]).
 
+-export_type([pstate/0]). % from eredis.hrl
+
 -ifdef(TEST).
 -export([parse_bulk/1, parse_bulk/2,
          parse_multibulk/1, parse_multibulk/2, buffer_create/0, buffer_create/1]).
@@ -39,12 +41,12 @@
 init() ->
     #pstate{}.
 
--spec parse(State::pstate(), Data::binary()) ->
-                       {ok, eredis:return_value(), NewState::pstate()} |
-                       {ok, eredis:return_value(), Rest::binary(), NewState::pstate()} |
-                       {error, ErrString::binary(), NewState::pstate()} |
-                       {error, ErrString::binary(), Rest::binary(), NewState::pstate()} |
-                       {continue, NewState::pstate()} |
+-spec parse(State :: pstate(), Data :: binary()) ->
+                       {ok, eredis:return_value(), NewState :: pstate()} |
+                       {ok, eredis:return_value(), Rest :: binary(), NewState :: pstate()} |
+                       {error, ErrString :: binary(), NewState :: pstate()} |
+                       {error, ErrString :: binary(), Rest :: binary(), NewState :: pstate()} |
+                       {continue, NewState :: pstate()} |
                        {error, unknown_response}.
 
 %% @doc Parses the (possibly partial) response from Redis. Returns

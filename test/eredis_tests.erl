@@ -35,7 +35,7 @@ mset_mget_test() ->
 
     ?assertMatch({ok, _}, eredis:q(C, ["DEL" | Keys])),
 
-    KeyValuePairs = [[K, K*2] || K <- Keys],
+    KeyValuePairs = [[K, K * 2] || K <- Keys],
     ExpectedResult = [list_to_binary(integer_to_list(K * 2)) || K <- Keys],
 
     ?assertEqual({ok, <<"OK">>}, eredis:q(C, ["MSET" | lists:flatten(KeyValuePairs)])),
@@ -162,7 +162,7 @@ multibulk_test_() ->
      ?_assertEqual(<<"*3\r\n$3\r\nSET\r\n$3\r\nfoo\r\n$3\r\n123\r\n">>,
                    list_to_binary(eredis:create_multibulk(['SET', foo, 123]))),
 
-     ?_assertThrow({cannot_store_floats, 123.5},
+     ?_assertError({cannot_store_floats, 123.5},
                    list_to_binary(eredis:create_multibulk(['SET', foo, 123.5])))
     ].
 

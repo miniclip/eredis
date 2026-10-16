@@ -110,7 +110,7 @@ start_link(Transport, Host, Port, Password, ReconnectSleep,
                                  MaxQueueSize, QueueBehaviour).
 
 %% @doc Callback for starting from poolboy
--spec start_link(sub_args()) -> {ok, Pid::pid()} | {error, Reason::term()}.
+-spec start_link(sub_args()) -> {ok, Pid :: pid()} | {error, Reason :: term()}.
 start_link(Args) ->
     Transport      = proplists:get_value(transport, Args, ?DEFAULT_TRANSPORT),
     Host           = proplists:get_value(host, Args, ?DEFAULT_HOST),
@@ -125,7 +125,7 @@ start_link(Args) ->
 stop(Pid) ->
     eredis_sub_client:stop(Pid).
 
--spec controlling_process(Client::pid()) -> ok.
+-spec controlling_process(Client :: pid()) -> ok.
 %% @doc Make the calling process the controlling process. The
 %% controlling process received pubsub-related messages, of which
 %% there are three kinds. In each message, the pid refers to the
@@ -162,7 +162,7 @@ stop(Pid) ->
 controlling_process(Client) ->
     controlling_process(Client, self()).
 
--spec controlling_process(Client::pid(), Pid::pid()) -> ok.
+-spec controlling_process(Client :: pid(), Pid :: pid()) -> ok.
 %% @doc Make the given process (pid) the controlling process.
 controlling_process(Client, Pid) ->
     controlling_process(Client, Pid, ?TIMEOUT).
@@ -172,7 +172,7 @@ controlling_process(Client, Pid) ->
 controlling_process(Client, Pid, Timeout) ->
     gen_server:call(Client, {controlling_process, Pid}, Timeout).
 
--spec ack_message(Client::pid()) -> ok.
+-spec ack_message(Client :: pid()) -> ok.
 %% @doc acknowledge the receipt of a pubsub message. each pubsub
 %% message must be acknowledged before the next one is received
 ack_message(Client) ->
