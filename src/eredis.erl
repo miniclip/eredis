@@ -84,9 +84,9 @@
 -export_type([parser_state/0]). % from eredis.hrl
 
 %% Type of gen_server process id
--type client() :: (Pid::pid()) |
-                  (Name::atom()) |
-                  {Name::atom(), Node::atom()} |
+-type client() :: (Pid :: pid()) |
+                  (Name :: atom()) |
+                  {Name :: atom(), Node :: atom()} |
                   {global, term()} |
                   {via, module(), term()}.
 -export_type([client/0]).
@@ -163,7 +163,7 @@ start_link(Transport, Host, Port, Database, Password, ReconnectSleep, ConnectTim
                              ReconnectSleep, ConnectTimeout).
 
 %% @doc Callback for starting from poolboy
--spec start_link(server_args()) -> {ok, Pid::pid()} | {error, Reason::term()}.
+-spec start_link(server_args()) -> {ok, Pid :: pid()} | {error, Reason :: term()}.
 start_link(Args) ->
     Transport      = proplists:get_value(transport, Args, ?DEFAULT_TRANSPORT),
     Host           = proplists:get_value(host, Args, ?DEFAULT_HOST),
@@ -177,8 +177,8 @@ start_link(Args) ->
 stop(Client) ->
     eredis_client:stop(Client).
 
--spec q(Client::client(), Command::command()) ->
-               {ok, return_value()} | {error, Reason::term() | no_connection}.
+-spec q(Client :: client(), Command :: command()) ->
+               {ok, return_value()} | {error, Reason :: term() | no_connection}.
 %% @doc Executes the given command in the specified connection. The
 %% command must be a valid Redis command and may contain arbitrary
 %% data which will be converted to binaries. The returned values will
@@ -189,8 +189,8 @@ q(Client, Command) ->
 q(Client, Command, Timeout) ->
     call(Client, Command, Timeout).
 
--spec qp(Client::client(), Pipeline::pipeline()) ->
-                [{ok, return_value()} | {error, Reason::binary()}] |
+-spec qp(Client :: client(), Pipeline :: pipeline()) ->
+                [{ok, return_value()} | {error, Reason :: binary()}] |
                 {error, no_connection}.
 %% @doc Executes the given pipeline (list of commands) in the
 %% specified connection. The commands must be valid Redis commands and
@@ -202,27 +202,28 @@ qp(Client, Pipeline) ->
 qp(Client, Pipeline, Timeout) ->
     pipeline(Client, Pipeline, Timeout).
 
--spec q_noreply(Client::client(), Command::command()) -> ok.
+-spec q_noreply(Client :: client(), Command :: command()) -> ok.
 %% @doc Executes the command but does not wait for a response and ignores any errors.
 %% @see q/2
 q_noreply(Client, Command) ->
     cast(Client, Command).
 
--spec qp_noreply(Client::client(), Pipeline::pipeline()) -> ok.
+-spec qp_noreply(Client :: client(), Pipeline :: pipeline()) -> ok.
 %% @doc Executes the pipeline but does not wait for a response and ignores any errors.
 %% @see q/2
 qp_noreply(Client, Pipeline) ->
     Request = {pipeline, [create_multibulk(Command) || Command <- Pipeline]},
     gen_server:cast(Client, Request).
 
--spec q_async(Client::client(), Command::command()) -> {await, Tag::reference()}.
+-spec q_async(Client :: client(), Command :: command()) -> {await, Tag :: reference()}.
 % @doc Executes the command, and sends a message to this process with the response (with either
 % error or success).
 % Message is of the form `{Tag, Reply}', where `Reply' is the reply expected from `q/2'.
 q_async(Client, Command) ->
     q_async(Client, Command, self()).
 
--spec q_async(Client::client(), Command::command(), Pid::pid()|atom()) -> {await, Tag::reference()}.
+-spec q_async(Client :: client(), Command :: command(), Pid :: pid()) ->
+                     {await, Tag :: reference()}.
 %% @doc Executes the command, and sends a message to `Pid' with the response (with either or
 %% success).
 %% @see q_async/2
@@ -233,7 +234,7 @@ q_async(Client, Command, Pid) when is_pid(Pid) ->
     gen_server:cast(Client, Request),
     {await, Tag}.
 
--spec qp_async(Client::client(), Pipeline::pipeline()) -> {await, Tag::reference()}.
+-spec qp_async(Client :: client(), Pipeline :: pipeline()) -> {await, Tag :: reference()}.
 % @doc Executes the pipeline, and sends a message to this process with the response (with either
 % error or success).
 % Message is of the form `{Tag, Reply}', where `Reply' is the reply expected from `qp/2'.
@@ -265,7 +266,7 @@ cast(Client, Command) ->
     Request = {request, create_multibulk(Command)},
     gen_server:cast(Client, Request).
 
--spec create_multibulk(Args::command()) -> Command::[[command()], ...].
+-spec create_multibulk(Args :: command()) -> Command :: [[command()], ...].
 %% @doc Creates a multibulk command with all the correct size headers
 create_multibulk(Args) ->
     ArgCount = [<<$*>>, integer_to_list(length(Args)), <<?NL>>],
@@ -277,12 +278,12 @@ to_bulk(B) when is_binary(B) ->
     [<<$$>>, integer_to_list(iolist_size(B)), <<?NL>>, B, <<?NL>>].
 
 %% @doc Convert given value to binary. Fallbacks to
-%% term_to_binary/1. For floats, throws {cannot_store_floats, Float}
+%% term_to_binary/1. For floats, raises {cannot_store_floats, Float}
 %% as we do not want floats to be stored in Redis. Your future self
 %% will thank you for this.
 to_binary(X) when is_list(X)    -> list_to_binary(X);
 to_binary(X) when is_atom(X)    -> atom_to_binary(X, utf8);
 to_binary(X) when is_binary(X)  -> X;
 to_binary(X) when is_integer(X) -> integer_to_binary(X);
-to_binary(X) when is_float(X)   -> throw({cannot_store_floats, X});
+to_binary(X) when is_float(X)   -> error({cannot_store_floats, X});
 to_binary(X)                    -> term_to_binary(X).

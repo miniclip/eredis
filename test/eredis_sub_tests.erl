@@ -37,12 +37,12 @@ pubsub_test() ->
         {message, _, _, _} = M ->
             ?assertEqual({message, <<"chan1">>, <<"msg">>, Sub}, M)
     after 10 ->
-            throw(timeout)
+            error(timeout)
     end,
 
     receive
         Msg ->
-            throw({unexpected_message, Msg})
+            error({unexpected_message, Msg})
     after 5 ->
             ok
     end,
@@ -217,7 +217,7 @@ get_state(Pid)
     get_state(State);
 get_state([{data, [{"State", State}]} | _]) ->
     State;
-get_state([_|Rest]) ->
+get_state([_ | Rest]) ->
     get_state(Rest).
 
 % Tests for Pattern Subscribe
@@ -244,10 +244,10 @@ pubsub_pattern_test() ->
         {pmessage, _Pattern, _Channel, _Message, _} = M ->
             ?assertEqual({pmessage, <<"chan1*">>, <<"chan123">>, <<"msg">>, Sub}, M)
     after 10 ->
-            throw(timeout)
+            error(timeout)
     end,
 
-    eredis_sub:punsubscribe(Sub, [<<"chan1*">> , <<"chan2*">>]),
+    eredis_sub:punsubscribe(Sub, [<<"chan1*">>, <<"chan2*">>]),
     eredis_sub:ack_message(Sub),
     eredis_sub:ack_message(Sub),
     receive {unsubscribed, _, _} = M2 -> ?assertEqual({unsubscribed, <<"chan1*">>, Sub}, M2) end,
@@ -257,7 +257,7 @@ pubsub_pattern_test() ->
 
     ?assertEqual({ok, <<"0">>}, eredis:q(Pub, ["PUBLISH", <<"chan123">>, <<"msg">>])),
     receive
-        Msg -> throw({unexpected_message, Msg})
+        Msg -> error({unexpected_message, Msg})
     after 10 ->
             ok
     end,

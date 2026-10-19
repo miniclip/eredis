@@ -61,14 +61,14 @@
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2,
          terminate/2, code_change/3]).
 
--spec start_link(Transport::eredis:transport(),
-                 Host::eredis:host(),
-                 Port::0..65535,
-                 Password::string(),
-                 ReconnectSleep::eredis:reconnect_sleep(),
-                 MaxQueueSize::non_neg_integer() | infinity,
-                 QueueBehaviour::drop | exit) ->
-                        {ok, Pid::pid()} | {error, Reason::term()}.
+-spec start_link(Transport :: eredis:transport(),
+                 Host :: eredis:host(),
+                 Port :: 0..65535,
+                 Password :: string(),
+                 ReconnectSleep :: eredis:reconnect_sleep(),
+                 MaxQueueSize :: non_neg_integer() | infinity,
+                 QueueBehaviour :: drop | exit) ->
+                        {ok, Pid :: pid()} | {error, Reason :: term()}.
 start_link(Transport, Host, Port, Password, ReconnectSleep, MaxQueueSize, QueueBehaviour) ->
     Args = [Transport, Host, Port, Password, ReconnectSleep, MaxQueueSize, QueueBehaviour],
     gen_server:start_link(?MODULE, Args, []).
@@ -105,7 +105,7 @@ handle_call({controlling_process, Pid}, _From, State) ->
             erlang:demonitor(OldRef)
     end,
     Ref = erlang:monitor(process, Pid),
-    {reply, ok, State#state{controlling_process={Ref, Pid}, msg_state = ready}};
+    {reply, ok, State#state{controlling_process = {Ref, Pid}, msg_state = ready}};
 handle_call(get_channels, _From, State) ->
     {reply, {ok, State#state.channels}, State};
 handle_call(stop, _From, State) ->
@@ -117,13 +117,13 @@ handle_call(_Request, _From, State) ->
 %% connection comes back up, we should be ready to forward a message
 %% again.
 handle_cast({ack_message, Pid},
-            #state{controlling_process={_, Pid}, socket = undefined} = State) ->
+            #state{controlling_process = {_, Pid}, socket = undefined} = State) ->
     {noreply, State#state{msg_state = ready}};
 %% Controlling process acknowledges receipt of previous message. Send
 %% the next if there is any messages queued or ask for more on the
 %% socket.
 handle_cast({ack_message, Pid},
-            #state{controlling_process={_, Pid}} = State) ->
+            #state{controlling_process = {_, Pid}} = State) ->
     NewState = case queue:out(State#state.msg_queue) of
                    {empty, _Queue} ->
                        State#state{msg_state = ready};
@@ -212,10 +212,10 @@ handle_info({connection_ready, Socket}, #state{socket = undefined} = State) ->
     {noreply, NewState};
 %% Our controlling process is down.
 handle_info({'DOWN', Ref, process, Pid, _Reason},
-            #state{controlling_process={Ref, Pid}} = State) ->
-    {stop, shutdown, State#state{controlling_process=undefined,
-                                 msg_state=ready,
-                                 msg_queue=queue:new()}};
+            #state{controlling_process = {Ref, Pid}} = State) ->
+    {stop, shutdown, State#state{controlling_process = undefined,
+                                 msg_state = ready,
+                                 msg_queue = queue:new()}};
 %% eredis can be used in Poolboy, but it requires to support a simple API
 %% that Poolboy uses to manage the connections.
 handle_info(stop, State) ->
@@ -249,11 +249,11 @@ add_channels(Channels, OldChannels) ->
             true ->
                 Cs;
             false ->
-                [C|Cs]
+                [C | Cs]
         end
     end, OldChannels, Channels).
 
--spec handle_response(Data::binary(), State::state()) -> NewState::state().
+-spec handle_response(Data :: binary(), State :: state()) -> NewState :: state().
 %% Handle the response coming from Redis. This should only be
 %% channel messages that we should forward to the controlling process
 %% or queue if the previous message has not been acked. If there are
@@ -263,10 +263,10 @@ handle_response(Data, #state{parser_state = ParserState} = State) ->
     case eredis_parser:parse(ParserState, Data) of
         {ReturnCode, Value, NewParserState} ->
             reply({ReturnCode, Value},
-                  State#state{parser_state=NewParserState});
+                  State#state{parser_state = NewParserState});
         {ReturnCode, Value, Rest, NewParserState} ->
             NewState = reply({ReturnCode, Value},
-                             State#state{parser_state=NewParserState}),
+                             State#state{parser_state = NewParserState}),
             handle_response(Rest, NewState);
         {continue, NewParserState} ->
             State#state{parser_state = NewParserState}
@@ -288,7 +288,7 @@ reply({ok, [<<"unsubscribe">>, Channel, _]}, State) ->
 reply({ok, [<<"punsubscribe">>, Channel, _]}, State) ->
     queue_or_send({unsubscribed, Channel, self()}, State);
 reply({ReturnCode, Value}, State) ->
-    throw({unexpected_response_from_redis, ReturnCode, Value, State}).
+    error({unexpected_response_from_redis, ReturnCode, Value, State}).
 
 queue_or_send(Msg, State) ->
     case State#state.msg_state of
@@ -373,25 +373,26 @@ set_socket_opts(Opts, State) ->
 %% Loop until a connection can be established, this includes
 %% successfully issuing the auth and select calls. When we have a
 %% connection, give the socket to the redis client.
-reconnect_loop(Client, #state{reconnect_sleep=ReconnectSleep}=State) ->
+reconnect_loop(Client, #state{reconnect_sleep = ReconnectSleep} = State) ->
     Client ! reconnect_attempt,
-    case catch(connect(State)) of
+    try connect(State) of
         {ok, #state{transport_module = TransportModule, socket = Socket}} ->
             TransportModule:controlling_process(Socket, Client),
             Client ! {connection_ready, Socket};
         {error, Reason} ->
             Client ! {reconnect_failed, Reason},
             timer:sleep(ReconnectSleep),
-            reconnect_loop(Client, State);
+            reconnect_loop(Client, State)
+    catch
         %% Something bad happened when connecting, like Redis might be
         %% loading the dataset and we got something other than 'OK' in
         %% auth or select
-        _ ->
+        _:_ ->
             timer:sleep(ReconnectSleep),
             reconnect_loop(Client, State)
     end.
 
-send_to_controller(_Msg, #state{controlling_process=undefined}) ->
+send_to_controller(_Msg, #state{controlling_process = undefined}) ->
     ok;
-send_to_controller(Msg, #state{controlling_process={_Ref, Pid}}) ->
+send_to_controller(Msg, #state{controlling_process = {_Ref, Pid}}) ->
     Pid ! Msg.
