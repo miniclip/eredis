@@ -3,6 +3,17 @@
 Whenever there's an interface breaking change (a change in the project's major version),
 required migration instructions will be detailed in this file.
 
+## From [2.6.x] to [3.0.0]
+
+### Update
+
+- your OTP version to 26 or later
+- your code catching `{cannot_store_floats, Float}` (from `eredis:q/2` and friends)
+as a throw to catch it as an error (`error:{cannot_store_floats, _}`)
+- your code matching `eredis_sub_client`'s exit reason on an unexpected Redis response:
+it is now `{{unexpected_response_from_redis, ...}, Stacktrace}` instead of
+`{bad_return_value, {unexpected_response_from_redis, ...}}`
+
 ## From [2.{0..3}.x] to [2.4.0]
 
 ### Update
