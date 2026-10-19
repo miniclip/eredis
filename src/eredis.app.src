@@ -3,7 +3,7 @@
     {vsn, git},
     {registered, []},
     {pkg_name, mc_eredis},
-    {licenses, ["The MIT License"]},
+    {licenses, ["MIT"]},
     {links, [{"GitHub", "https://github.com/miniclip/eredis"}]},
 
     {applications, [
