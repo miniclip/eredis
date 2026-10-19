@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 except for the 2.4.0 release.
 
-## [Unreleased]
+## [3.0.0] - 2026-10-19
 
 ### Changed
 
@@ -18,6 +18,8 @@ except for the 2.4.0 release.
 as errors instead of thrown; `eredis_sub_client`'s exit reason on an unexpected response
 changes from `{bad_return_value, {unexpected_response_from_redis, ...}}` to
 `{{unexpected_response_from_redis, ...}, Stacktrace}` [Sérgio Almeida]
+- `project_plugins` pinned to OTP 26 compatible versions [Dinis Rosário]
+- `ex_doc` `main` option to the format `rebar3_ex_doc` 0.3.0 expects [Dinis Rosário]
 
 ### Fixed
 
